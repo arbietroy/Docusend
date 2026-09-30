@@ -18,12 +18,6 @@ export default function LandingPage() {
     { icon:'🔔', title:'Bank alert integration',         desc:'Connect your bank alert emails and DocuSend can detect incoming transfers automatically — reducing confirmation time to near zero.' },
   ]
 
-  const testimonials = [
-    { quote:'"Before DocuSend, sending contracts took us two to three days per client. Now it happens in seconds."', name:'Tunde Oladele',  title:'MD, Apex Properties Ltd',  initials:'TO', color:'#2563EB' },
-    { quote:'"We were losing clients because our documentation was slow. DocuSend fixed that completely."',           name:'Amaka Nwofor',  title:'CEO, GreenHaven Realty',    initials:'AN', color:'#7C3AED' },
-    { quote:'"The installment tracking alone is worth every naira. All my client payment history in one place."',    name:'Blessing Kalu', title:'Director, Sunrise Homes',   initials:'BK', color:'#0891B2' },
-  ]
-
   const plans = [
     { name:'Starter',    price:'₦50,000',  period:'setup + ₦15,000/mo', features:['Up to 3 products','Up to 50 clients/month','Contract, Receipt & Acknowledgement','Installment tracking','Email support'],           btn:'Get started', featured:false },
     { name:'Growth',     price:'₦100,000', period:'setup + ₦30,000/mo', features:['Unlimited products','Unlimited clients','All document types','Promo and price management','Bank alert integration','Priority support'], btn:'Get started', featured:true,  badge:'Most popular' },
@@ -184,26 +178,6 @@ export default function LandingPage() {
                 onClick={() => navigate('/auth')}
                 style={{ display:'block', width:'100%', textAlign:'center', padding:13, borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', border: p.featured ? 'none' : '1px solid rgba(255,255,255,0.2)', background: p.featured ? '#fff' : 'transparent', color: p.featured ? '#2563EB' : '#fff', transition:'all 0.2s' }}
               >{p.btn}</button>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS ── */}
-      <section style={{ padding:'100px 6%', background:'#111F3A' }}>
-        <p style={{ fontSize:12, fontWeight:600, color:'#2563EB', letterSpacing:1, marginBottom:16, textTransform:'uppercase' }}>What our clients say</p>
-        <h2 style={{ fontSize:'clamp(28px,3.5vw,42px)', fontWeight:800, letterSpacing:-1.5, marginBottom:60 }}>Built on real results</h2>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:20 }}>
-          {testimonials.map((t, i) => (
-            <div key={i} style={{ background:'#0A1628', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, padding:32 }}>
-              <p style={{ fontSize:15, color:'#94A3B8', lineHeight:1.7, marginBottom:24, fontStyle:'italic' }}>{t.quote}</p>
-              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                <div style={{ width:40, height:40, borderRadius:'50%', background:t.color, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14, flexShrink:0 }}>{t.initials}</div>
-                <div>
-                  <p style={{ fontSize:14, fontWeight:600 }}>{t.name}</p>
-                  <p style={{ fontSize:12, color:'#94A3B8' }}>{t.title}</p>
-                </div>
-              </div>
             </div>
           ))}
         </div>

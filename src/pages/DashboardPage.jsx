@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/layout/Sidebar'
 import TrialBanner from '../components/layout/TrialBanner'
-import { Badge, Modal } from '../components/ui/Badge'
+import { Alert, Badge, Modal } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Input, Select } from '../components/ui/Input'
 import { useAuth } from '../hooks/useAuth.jsx'
+import { getPlan, getTrialDaysLeft, getTrialEnd } from '../lib/trial'
 
 // ── Stat Card ──
 function StatCard({ label, value, change, changeType = 'neutral' }) {
@@ -307,118 +308,263 @@ function Templates() {
 function Settings() {
   const [panel, setPanel] = useState('profile')
   const tabs = ['profile', 'connections', 'notifications', 'security']
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-5">
-      <div className="flex flex-col gap-1">
+      <div className="flex lg:flex-col gap-1 overflow-x-auto">
         {tabs.map(t => (
           <button key={t} onClick={() => setPanel(t)}
-            className={`px-4 py-2.5 rounded-lg text-sm font-medium capitalize transition-colors text-left
+            className={`px-4 py-2.5 rounded-lg text-sm font-medium capitalize transition-colors text-left whitespace-nowrap
               ${panel === t ? 'bg-blue-600/12 text-white font-semibold' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
             {t}
           </button>
         ))}
       </div>
-      <div className="bg-[#111F3A] border border-white/8 rounded-xl p-6">
-        {panel === 'profile' && (
-          <div>
-            <h3 className="text-sm font-bold mb-1">Business Profile</h3>
-            <p className="text-xs text-slate-400 mb-5">This information appears in your documents and emails.</p>
-            <div className="grid grid-cols-1 gap-3 max-w-md">
-              <Input label="Business Name" defaultValue="Apex Business Ltd" />
-              <Input label="Contact Email" type="email" defaultValue="contact@apexbusiness.com" />
-              <Input label="Phone Number" type="tel" defaultValue="+234 901 234 5678" />
-              <Input label="Business Address" defaultValue="123 Victoria Island, Lagos" />
-              <Select label="Industry"><option>Real Estate / Property</option><option>Financial Services</option></Select>
-              <Button className="w-fit mt-2">Save changes</Button>
+      <div className="bg-[#111F3A] border border-white/8 rounded-xl p-5 lg:p-6">
+        {panel === 'profile'       && <ProfilePanel />}
+        {panel === 'connections'   && <ConnectionsPanel />}
+        {panel === 'notifications' && <NotificationsPanel />}
+        {panel === 'security'      && <SecurityPanel />}
+      </div>
+    </div>
+  )
+}
+
+const INDUSTRIES = ['Real Estate / Property', 'Financial Services', 'Cooperatives / Savings', 'Retail / E-commerce', 'Education', 'Healthcare', 'Legal Services', 'Other']
+
+function ProfilePanel() {
+  const { user, businessName, updateProfile } = useAuth()
+  const meta = user?.user_metadata || {}
+  const [form, setForm] = useState({
+    business_name: businessName,
+    contact_email: meta.contact_email || user?.email || '',
+    phone:         meta.phone || '',
+    address:       meta.address || '',
+    industry:      meta.industry || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [alert, setAlert]   = useState({ msg: '', type: 'error' })
+  const set = key => e => setForm(f => ({ ...f, [key]: e.target.value }))
+
+  const save = async () => {
+    if (!form.business_name.trim()) return setAlert({ msg: 'Business name is required.', type: 'error' })
+    setSaving(true); setAlert({ msg: '' })
+    const { error } = await updateProfile({ ...form, business_name: form.business_name.trim() })
+    setSaving(false)
+    setAlert(error ? { msg: error.message, type: 'error' } : { msg: 'Profile saved.', type: 'success' })
+  }
+
+  return (
+    <div>
+      <h3 className="text-sm font-bold mb-1">Business Profile</h3>
+      <p className="text-xs text-slate-400 mb-5">This information appears in your documents and emails.</p>
+      <div className="grid grid-cols-1 gap-3 max-w-md">
+        {alert.msg && <Alert variant={alert.type}>{alert.msg}</Alert>}
+        <Input label="Business Name" value={form.business_name} onChange={set('business_name')} />
+        <Input label="Contact Email" type="email" value={form.contact_email} onChange={set('contact_email')} hint="Shown to clients. Your login email doesn't change." />
+        <Input label="Phone Number" type="tel" placeholder="+234 800 000 0000" value={form.phone} onChange={set('phone')} />
+        <Input label="Business Address" placeholder="Street, city" value={form.address} onChange={set('address')} />
+        <Select label="Industry" value={form.industry} onChange={set('industry')}>
+          <option value="">Select your industry</option>
+          {INDUSTRIES.map(i => <option key={i}>{i}</option>)}
+        </Select>
+        <Button className="w-fit mt-2" loading={saving} onClick={save}>Save changes</Button>
+      </div>
+    </div>
+  )
+}
+
+function ConnectionsPanel() {
+  return (
+    <div>
+      <h3 className="text-sm font-bold mb-1">Connected Accounts</h3>
+      <p className="text-xs text-slate-400 mb-5">DocuSend uses these to generate and send your documents automatically.</p>
+      {[
+        { icon:'📧', name:'Gmail',                  detail:'Send documents from your own Gmail address' },
+        { icon:'💾', name:'Google Drive',           detail:'Store templates and generated documents' },
+        { icon:'🏦', name:'Bank Alert Integration', detail:'Auto-detect incoming transfers' },
+      ].map((c, i) => (
+        <div key={i} className="flex items-center justify-between gap-3 p-4 bg-white/3 border border-white/8 rounded-xl mb-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-blue-600/10 border border-blue-600/20 flex items-center justify-center text-lg shrink-0">{c.icon}</div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">{c.name}</p>
+              <p className="text-xs text-slate-400">{c.detail}</p>
             </div>
           </div>
-        )}
-        {panel === 'connections' && (
-          <div>
-            <h3 className="text-sm font-bold mb-1">Connected Accounts</h3>
-            <p className="text-xs text-slate-400 mb-5">DocuSend uses these to generate and send your documents automatically.</p>
-            {[
-              { icon:'📧', name:'Gmail', status:'Connected', detail:'ogunbanjooluwadamilola@gmail.com', connected:true },
-              { icon:'💾', name:'Google Drive', status:'Connected', detail:'documents folder linked', connected:true },
-              { icon:'🏦', name:'Bank Alert Integration', status:'Not connected', detail:'Connect to auto-detect transfers', connected:false },
-            ].map((c, i) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-white/3 border border-white/8 rounded-xl mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-600/10 border border-blue-600/20 flex items-center justify-center text-lg">{c.icon}</div>
-                  <div>
-                    <p className="text-sm font-semibold">{c.name}</p>
-                    <p className={`text-xs ${c.connected ? 'text-green-400' : 'text-slate-400'}`}>{c.connected ? '● ' : ''}{c.detail}</p>
-                  </div>
-                </div>
-                <Button size="sm" variant={c.connected ? 'secondary' : 'primary'}>{c.connected ? 'Disconnect' : 'Connect'}</Button>
-              </div>
-            ))}
-          </div>
-        )}
-        {panel === 'notifications' && (
-          <div>
-            <h3 className="text-sm font-bold mb-1">Notification Preferences</h3>
-            <p className="text-xs text-slate-400 mb-5">Choose when DocuSend notifies you.</p>
-            <div className="flex flex-col gap-4 max-w-sm">
-              {['New payment submitted','Documents sent successfully','Client fully paid off','Weekly summary report'].map((label, i) => (
-                <label key={i} className="flex items-center justify-between text-sm cursor-pointer">
-                  {label}
-                  <input type="checkbox" defaultChecked={i < 3} className="w-4 h-4 accent-blue-500" />
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-        {panel === 'security' && (
-          <div>
-            <h3 className="text-sm font-bold mb-1">Change Password</h3>
-            <p className="text-xs text-slate-400 mb-5">Use a strong password you don't use elsewhere.</p>
-            <div className="flex flex-col gap-3 max-w-sm mb-6">
-              <Input label="Current Password" type="password" placeholder="••••••••" />
-              <Input label="New Password" type="password" placeholder="••••••••" />
-              <Input label="Confirm New Password" type="password" placeholder="••••••••" />
-              <Button className="w-fit mt-1">Update password</Button>
-            </div>
-            <div className="border-t border-white/8 pt-5">
-              <h3 className="text-sm font-bold text-red-400 mb-1">Danger Zone</h3>
-              <p className="text-xs text-slate-400 mb-4">These actions are irreversible.</p>
-              <Button variant="danger">Delete account</Button>
-            </div>
-          </div>
-        )}
+          <Button size="sm" variant="secondary" disabled>Coming soon</Button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const NOTIFICATIONS = [
+  { key: 'payment_submitted', label: 'New payment submitted',       default: true },
+  { key: 'documents_sent',    label: 'Documents sent successfully', default: true },
+  { key: 'client_paid_off',   label: 'Client fully paid off',       default: true },
+  { key: 'weekly_summary',    label: 'Weekly summary report',       default: false },
+]
+
+function NotificationsPanel() {
+  const { user, updateProfile } = useAuth()
+  const saved = user?.user_metadata?.notifications || {}
+  const [prefs, setPrefs] = useState(() =>
+    Object.fromEntries(NOTIFICATIONS.map(n => [n.key, saved[n.key] ?? n.default])))
+  const [error, setError] = useState('')
+
+  const toggle = async (key) => {
+    const next = { ...prefs, [key]: !prefs[key] }
+    setPrefs(next); setError('')
+    const { error } = await updateProfile({ notifications: next })
+    if (error) { setPrefs(prefs); setError(error.message) }
+  }
+
+  return (
+    <div>
+      <h3 className="text-sm font-bold mb-1">Notification Preferences</h3>
+      <p className="text-xs text-slate-400 mb-5">Choose when DocuSend notifies you. Changes save automatically.</p>
+      {error && <div className="mb-4 max-w-sm"><Alert>{error}</Alert></div>}
+      <div className="flex flex-col gap-4 max-w-sm">
+        {NOTIFICATIONS.map(n => (
+          <label key={n.key} className="flex items-center justify-between text-sm cursor-pointer">
+            {n.label}
+            <input type="checkbox" checked={prefs[n.key]} onChange={() => toggle(n.key)} className="w-4 h-4 accent-blue-500" />
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SecurityPanel() {
+  const { user, signIn, updatePassword, deleteAccount } = useAuth()
+  const navigate = useNavigate()
+  // Google-only accounts have no password yet, so there's nothing to re-check
+  const hasPassword = user?.identities?.some(i => i.provider === 'email') ?? true
+
+  const [current, setCurrent] = useState('')
+  const [next, setNext]       = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [saving, setSaving]   = useState(false)
+  const [pwAlert, setPwAlert] = useState({ msg: '', type: 'error' })
+
+  const [confirmDelete, setConfirmDelete] = useState('')
+  const [deleting, setDeleting]           = useState(false)
+  const [deleteError, setDeleteError]     = useState('')
+
+  const changePassword = async () => {
+    if (hasPassword && !current) return setPwAlert({ msg: 'Enter your current password.', type: 'error' })
+    if (next.length < 8)         return setPwAlert({ msg: 'New password must be at least 8 characters.', type: 'error' })
+    if (next !== confirm)        return setPwAlert({ msg: 'New passwords do not match.', type: 'error' })
+    setSaving(true); setPwAlert({ msg: '' })
+    if (hasPassword) {
+      const { error } = await signIn(user.email, current)
+      if (error) {
+        setSaving(false)
+        return setPwAlert({ msg: 'Current password is incorrect.', type: 'error' })
+      }
+    }
+    const { error } = await updatePassword(next)
+    setSaving(false)
+    if (error) return setPwAlert({ msg: error.message, type: 'error' })
+    setCurrent(''); setNext(''); setConfirm('')
+    setPwAlert({ msg: 'Password updated.', type: 'success' })
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true); setDeleteError('')
+    const { error } = await deleteAccount()
+    setDeleting(false)
+    if (error) return setDeleteError('Could not delete your account. Please try again or contact support.')
+    navigate('/', { replace: true })
+  }
+
+  return (
+    <div>
+      <h3 className="text-sm font-bold mb-1">{hasPassword ? 'Change Password' : 'Set a Password'}</h3>
+      <p className="text-xs text-slate-400 mb-5">
+        {hasPassword ? "Use a strong password you don't use elsewhere." : 'Add a password so you can also sign in with your email.'}
+      </p>
+      <div className="flex flex-col gap-3 max-w-sm mb-6">
+        {pwAlert.msg && <Alert variant={pwAlert.type}>{pwAlert.msg}</Alert>}
+        {hasPassword && <Input label="Current Password" type="password" placeholder="••••••••" value={current} onChange={e => setCurrent(e.target.value)} />}
+        <Input label="New Password" type="password" placeholder="At least 8 characters" value={next} onChange={e => setNext(e.target.value)} />
+        <Input label="Confirm New Password" type="password" placeholder="••••••••" value={confirm} onChange={e => setConfirm(e.target.value)} />
+        <Button className="w-fit mt-1" loading={saving} onClick={changePassword}>Update password</Button>
+      </div>
+      <div className="border-t border-white/8 pt-5 max-w-sm">
+        <h3 className="text-sm font-bold text-red-400 mb-1">Danger Zone</h3>
+        <p className="text-xs text-slate-400 mb-4">Deleting your account is permanent and cannot be undone.</p>
+        <div className="flex flex-col gap-3">
+          {deleteError && <Alert>{deleteError}</Alert>}
+          <Input label='Type DELETE to confirm' value={confirmDelete} onChange={e => setConfirmDelete(e.target.value)} />
+          <Button variant="danger" className="w-fit" loading={deleting} disabled={confirmDelete !== 'DELETE'} onClick={handleDelete}>
+            Delete account
+          </Button>
+        </div>
       </div>
     </div>
   )
 }
 
 // ── Billing Page ──
-function Billing({ onNavigate }) {
+const PLANS = [
+  { id:'starter',    name:'Starter',    price:'₦50,000',  period:'setup + ₦15,000/mo' },
+  { id:'growth',     name:'Growth',     price:'₦100,000', period:'setup + ₦30,000/mo' },
+  { id:'enterprise', name:'Enterprise', price:'Custom',   period:'Talk to us' },
+]
+
+function Billing() {
+  const { user, updateProfile } = useAuth()
+  const [switching, setSwitching] = useState(null)
+  const [error, setError] = useState('')
+  const planId   = getPlan(user)
+  const current  = PLANS.find(p => p.id === planId) || PLANS[1]
+  const daysLeft = getTrialDaysLeft(user)
+  const trialEnd = getTrialEnd(user)
+  const fmtDate  = d => d?.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+
+  const selectPlan = async (id) => {
+    setSwitching(id); setError('')
+    const { error } = await updateProfile({ plan: id })
+    setSwitching(null)
+    if (error) setError(error.message)
+  }
+
   return (
     <div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <StatCard label="Current Plan" value="Growth" change="₦100,000 setup + ₦30,000/mo" />
-        <StatCard label="Trial Ends" value="12 days" change="Upgrade before trial expires" changeType="down" />
-        <StatCard label="Next Payment" value="₦30,000" change="Due 03 Oct 2026" />
+        <StatCard label="Current Plan" value={current.name} change={`${current.price} ${current.period}`} />
+        <StatCard
+          label={daysLeft > 0 ? 'Trial Ends' : 'Trial Ended'}
+          value={daysLeft > 0 ? `${daysLeft} day${daysLeft !== 1 ? 's' : ''}` : fmtDate(trialEnd) || '—'}
+          change={daysLeft > 0 ? `On ${fmtDate(trialEnd)}` : 'Upgrade to keep sending documents'}
+          changeType="down"
+        />
+        <StatCard label="Next Payment" value="—" change="Online payments coming soon" />
       </div>
-      <div className="bg-[#111F3A] border border-white/8 rounded-xl p-6">
+      <div className="bg-[#111F3A] border border-white/8 rounded-xl p-5 lg:p-6">
         <h3 className="text-sm font-bold mb-1">Choose your plan</h3>
         <p className="text-xs text-slate-400 mb-5">All plans include automated document sending, installment tracking, and email delivery.</p>
+        {error && <div className="mb-4"><Alert>{error}</Alert></div>}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { name:'Starter',    price:'₦50,000',  period:'setup + ₦15,000/mo', current: false },
-            { name:'Growth',     price:'₦100,000', period:'setup + ₦30,000/mo', current: true  },
-            { name:'Enterprise', price:'Custom',   period:'Talk to us',          current: false },
-          ].map((p, i) => (
-            <div key={i} className={`p-4 rounded-xl border ${p.current ? 'border-blue-500/40 bg-blue-600/6' : 'border-white/8'}`}>
-              <p className={`text-sm font-bold mb-1 ${p.current ? 'text-blue-300' : ''}`}>{p.name}{p.current ? ' ← Current' : ''}</p>
-              <p className="text-xl font-black mb-0.5">{p.price}</p>
-              <p className="text-xs text-slate-400 mb-4">{p.period}</p>
-              <Button size="sm" variant={p.current ? 'primary' : 'secondary'} className="w-full justify-center">
-                {p.current ? 'Pay now' : p.name === 'Enterprise' ? 'Contact us' : 'Select'}
-              </Button>
-            </div>
-          ))}
+          {PLANS.map(p => {
+            const isCurrent = p.id === current.id
+            return (
+              <div key={p.id} className={`p-4 rounded-xl border ${isCurrent ? 'border-blue-500/40 bg-blue-600/6' : 'border-white/8'}`}>
+                <p className={`text-sm font-bold mb-1 ${isCurrent ? 'text-blue-300' : ''}`}>{p.name}{isCurrent ? ' ← Current' : ''}</p>
+                <p className="text-xl font-black mb-0.5">{p.price}</p>
+                <p className="text-xs text-slate-400 mb-4">{p.period}</p>
+                {isCurrent ? (
+                  <Button size="sm" className="w-full justify-center" disabled>Pay now · coming soon</Button>
+                ) : p.id === 'enterprise' ? (
+                  <Button size="sm" variant="secondary" className="w-full justify-center" onClick={() => { window.location.href = 'mailto:hello@docusend.ng?subject=DocuSend%20Enterprise' }}>Contact us</Button>
+                ) : (
+                  <Button size="sm" variant="secondary" className="w-full justify-center" loading={switching === p.id} onClick={() => selectPlan(p.id)}>Select</Button>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
@@ -513,7 +659,9 @@ function AddProductModal({ onClose }) {
 export default function DashboardPage() {
   const [activePage, setActivePage] = useState('overview')
   const [modal, setModal] = useState({ type: null, data: null })
-  const navigate = useNavigate()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const goTo = (page) => { setActivePage(page); setSidebarOpen(false) }
 
   const openModal  = (type, data = null) => setModal({ type, data })
   const closeModal = () => setModal({ type: null, data: null })
@@ -533,22 +681,31 @@ export default function DashboardPage() {
       case 'products':  return <Products  onOpenModal={openModal} />
       case 'templates': return <Templates />
       case 'settings':  return <Settings />
-      case 'billing':   return <Billing   onNavigate={setActivePage} />
+      case 'billing':   return <Billing />
       default:          return <Overview  onNavigate={setActivePage} onOpenModal={openModal} />
     }
   }
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar activePage={activePage} onNavigate={setActivePage} pendingCount={3} />
+      <Sidebar activePage={activePage} onNavigate={goTo} pendingCount={3} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 ml-60 flex flex-col">
+      <div className="flex-1 min-w-0 lg:ml-60 flex flex-col">
         {/* Trial Banner */}
-        <TrialBanner onUpgrade={() => setActivePage('billing')} />
+        <TrialBanner onUpgrade={() => goTo('billing')} />
 
         {/* Topbar */}
-        <div className="sticky top-0 z-40 h-15 px-7 bg-navy/90 backdrop-blur-md border-b border-white/8 flex items-center justify-between gap-4">
-          <h1 className="text-base font-bold">{pageTitles[activePage]}</h1>
+        <div className="sticky top-0 z-30 h-16 px-4 lg:px-7 bg-navy/90 backdrop-blur-md border-b border-white/8 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden w-9 h-9 rounded-lg bg-white/6 border border-white/8 flex items-center justify-center text-lg"
+              aria-label="Open menu"
+            >
+              ☰
+            </button>
+            <h1 className="text-base font-bold">{pageTitles[activePage]}</h1>
+          </div>
           <div className="flex items-center gap-2.5">
             <button className="w-9 h-9 rounded-lg bg-white/6 border border-white/8 flex items-center justify-center text-base hover:bg-white/10 transition-colors relative">
               🔔
@@ -559,7 +716,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Page content */}
-        <div className="flex-1 p-7">{renderPage()}</div>
+        <div className="flex-1 p-4 lg:p-7">{renderPage()}</div>
       </div>
 
       {/* Modals */}

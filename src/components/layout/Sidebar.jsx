@@ -13,14 +13,14 @@ const NAV = [
   { id: 'billing',    icon: '💼', label: 'Billing' },
 ]
 
-export default function Sidebar({ activePage, onNavigate, pendingCount = 0 }) {
-  const { signOut, businessName } = useAuth()
+export default function Sidebar({ activePage, onNavigate, pendingCount = 0, open = false, onClose }) {
+  const { user, signOut, businessName } = useAuth()
   const navigate = useNavigate()
-  const daysLeft = getTrialDaysLeft()
+  const daysLeft = getTrialDaysLeft(user)
 
   const initials = businessName
     ? businessName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-    : 'AB'
+    : (user?.email?.[0] || '?').toUpperCase()
 
   const handleSignOut = async () => {
     await signOut()
@@ -28,7 +28,11 @@ export default function Sidebar({ activePage, onNavigate, pendingCount = 0 }) {
   }
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-60 bg-[#111F3A] border-r border-white/8 flex flex-col z-50">
+    <>
+    {/* Backdrop (mobile only) */}
+    {open && <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={onClose} />}
+    <aside className={`fixed left-0 top-0 h-screen w-60 bg-[#111F3A] border-r border-white/8 flex flex-col z-50
+      transition-transform duration-200 lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
       {/* Logo */}
       <Link to="/" className="block px-5 py-5 border-b border-white/8 text-xl font-black">
         Docu<span className="text-blue-500">Send</span>
@@ -82,6 +86,7 @@ export default function Sidebar({ activePage, onNavigate, pendingCount = 0 }) {
         </button>
       </div>
     </aside>
+    </>
   )
 }
 

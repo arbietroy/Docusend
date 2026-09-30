@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth.jsx'
-import { setTrialData } from '../lib/trial'
+import { useAuth, needsOnboarding } from '../hooks/useAuth.jsx'
 import { Button } from '../components/ui/Button'
 import { Input, Select } from '../components/ui/Input'
 import { Alert } from '../components/ui/Badge'
+
+function getLegacyTrial() {
+  try { return JSON.parse(localStorage.getItem('docusend_trial')) } catch { return null }
+}
 
 // ─── Password strength ───
 function PasswordStrength({ password }) {
@@ -91,9 +94,12 @@ function BrandPanel() {
 export default function AuthPage() {
   const [params]   = useSearchParams()
   const navigate   = useNavigate()
-  const { user, signUp, signIn, signInWithGoogle, resetPassword, resendVerification } = useAuth()
+  const {
+    user, loading: authLoading, businessName, recovering,
+    signUp, signIn, signInWithGoogle, resetPassword, updatePassword, updateProfile, resendVerification,
+  } = useAuth()
 
-  // screens: signup | verify | onboard | login | forgot
+  // screens: signup | verify | onboard | login | forgot | newPassword
   const [screen, setScreen] = useState('signup')
   const [alert,  setAlert]  = useState({ msg: '', type: 'error' })
   const [loading, setLoading] = useState(false)
@@ -106,6 +112,8 @@ export default function AuthPage() {
   const [loginPassword, setLoginPassword] = useState('')
   const [forgotEmail, setForgotEmail]     = useState('')
   const [showResend, setShowResend]       = useState(false)
+  const [newPassword, setNewPassword]         = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
   // onboarding state
   const [obStep, setObStep]   = useState(1)
@@ -116,15 +124,30 @@ export default function AuthPage() {
   // countdown
   const [countdown, setCountdown] = useState(0)
 
+  const migrating = useRef(false)
+
+  // Decide which screen to show once we know who (if anyone) is signed in
   useEffect(() => {
-    if (user) { navigate('/dashboard', { replace: true }); return }
-    const mode     = params.get('mode')
-    const verified = params.get('verified')
-    const reset    = params.get('reset')
-    if (verified === 'true') { setScreen('onboard'); return }
-    if (reset    === 'true') { setScreen('forgot');  return }
-    if (mode     === 'login') { setScreen('login');  return }
-  }, [user, params, navigate])
+    if (authLoading) return
+    if (params.get('reset') === 'true' || recovering) { setScreen('newPassword'); return }
+    if (user) {
+      if (!needsOnboarding(user)) { navigate('/dashboard', { replace: true }); return }
+      // Accounts that finished onboarding back when it was only tracked in this browser
+      const legacy = getLegacyTrial()
+      if (legacy) {
+        if (!migrating.current) {
+          migrating.current = true
+          updateProfile({ onboarded: true, plan: legacy.plan || 'growth' })
+            .then(({ error }) => { if (!error) localStorage.removeItem('docusend_trial') })
+        }
+        return
+      }
+      setBusiness(b => b || businessName)
+      setScreen('onboard')
+      return
+    }
+    if (params.get('mode') === 'login') setScreen('login')
+  }, [user, authLoading, recovering, params, navigate, businessName, updateProfile])
 
   useEffect(() => {
     if (countdown <= 0) return
@@ -158,21 +181,27 @@ export default function AuthPage() {
 
   // ── Resend ──
   const handleResend = async () => {
-    const target = screen === 'verify' ? email : email
-    if (!target) return
-    await resendVerification(target)
+    if (!email) return
+    await resendVerification(email)
     setCountdown(60)
+  }
+
+  // ── Verified in another tab/device → sign in here to continue ──
+  const handleVerifiedContinue = () => {
+    setLoginEmail(email)
+    setScreen('login')
+    showAlert('Once you\'ve clicked the link in your email, sign in here to continue setting up.', 'info')
   }
 
   // ── Onboarding ──
   const handleObNext = (next) => {
-    if (obStep === 3) {
-      setTrialData(plan, business)
-    }
+    if (obStep === 2 && !business.trim()) return showAlert('Please enter your business name.')
+    clearAlert()
     setObStep(next)
   }
 
   // ── Login ──
+  // On success the effect above routes to onboarding or the dashboard
   const handleLogin = async () => {
     if (!loginEmail || !loginPassword) return showAlert('Please enter your email and password.', 'error')
     setLoading(true); clearAlert()
@@ -182,9 +211,7 @@ export default function AuthPage() {
       showAlert(error.message === 'Invalid login credentials'
         ? 'Incorrect email or password. Please try again.'
         : error.message)
-      return
     }
-    navigate('/dashboard', { replace: true })
   }
 
   // ── Forgot ──
@@ -197,9 +224,35 @@ export default function AuthPage() {
     showAlert(`Reset link sent to ${forgotEmail}! Check your inbox.`, 'success')
   }
 
-  // ── Go to dashboard ──
-  const goToDashboard = () => {
-    if (!localStorage.getItem('docusend_trial')) setTrialData(plan, business)
+  // ── Set new password (from reset link) ──
+  const handleNewPassword = async () => {
+    if (newPassword.length < 8) return showAlert('Password must be at least 8 characters.')
+    if (newPassword !== confirmPassword) return showAlert('Passwords do not match.')
+    setLoading(true); clearAlert()
+    const { error } = await updatePassword(newPassword)
+    setLoading(false)
+    if (error) { showAlert(error.message); return }
+    navigate('/dashboard', { replace: true })
+  }
+
+  const requestNewResetLink = () => {
+    clearAlert()
+    navigate('/auth', { replace: true })
+    setScreen('forgot')
+  }
+
+  // ── Finish onboarding ──
+  const finishOnboarding = async () => {
+    setLoading(true); clearAlert()
+    const { error } = await updateProfile({
+      onboarded: true,
+      plan,
+      industry,
+      clients_per_month: clients,
+      business_name: business.trim(),
+    })
+    setLoading(false)
+    if (error) { showAlert(error.message); return }
     navigate('/dashboard', { replace: true })
   }
 
@@ -284,7 +337,7 @@ export default function AuthPage() {
                   </div>
                 ))}
               </div>
-              <Button className="w-full mb-3" onClick={() => { setObStep(1); setScreen('onboard') }}>
+              <Button className="w-full mb-3" onClick={handleVerifiedContinue}>
                 ✓ I've verified my email — continue
               </Button>
               <button
@@ -342,7 +395,9 @@ export default function AuthPage() {
                   <p className="text-xs text-slate-500 mb-1">Step 2 of 4</p>
                   <h2 className="text-2xl font-black mb-2">Tell us about your business</h2>
                   <p className="text-sm text-slate-400 leading-relaxed mb-7">This helps us personalise your DocuSend experience.</p>
+                  {alert.msg && <><Alert variant={alert.type}>{alert.msg}</Alert><div className="mb-4" /></>}
                   <div className="flex flex-col gap-3 mb-7">
+                    <Input label="Business Name" placeholder="e.g. Apex Properties Ltd" value={business} onChange={e => setBusiness(e.target.value)} />
                     <Select label="Industry" value={industry} onChange={e => setIndustry(e.target.value)}>
                       <option value="">Select your industry</option>
                       <option>Real Estate / Property</option>
@@ -411,7 +466,8 @@ export default function AuthPage() {
                       <p key={i} className="text-sm text-slate-400 flex gap-2 mb-1.5"><span>{i+1}.</span>{s}</p>
                     ))}
                   </div>
-                  <Button className="w-full" onClick={goToDashboard}>Go to my dashboard →</Button>
+                  {alert.msg && <><Alert variant={alert.type}>{alert.msg}</Alert><div className="mb-4" /></>}
+                  <Button className="w-full" loading={loading} onClick={finishOnboarding}>Go to my dashboard →</Button>
                 </div>
               )}
             </div>
@@ -462,6 +518,36 @@ export default function AuthPage() {
               <div className="mt-5">
                 <Button className="w-full" loading={loading} onClick={handleForgot}>Send reset link</Button>
               </div>
+            </div>
+          )}
+
+          {/* ── NEW PASSWORD (from reset link) ── */}
+          {screen === 'newPassword' && (
+            <div>
+              <h2 className="text-2xl font-black mb-1">Choose a new password</h2>
+              {authLoading ? (
+                <p className="text-sm text-slate-400">Checking your reset link...</p>
+              ) : !user ? (
+                <div>
+                  <p className="text-sm text-slate-400 mb-6">This reset link is invalid or has expired.</p>
+                  <Button className="w-full" onClick={requestNewResetLink}>Request a new link</Button>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm text-slate-400 mb-7">
+                    Setting a new password for <strong className="text-white">{user.email}</strong>
+                  </p>
+                  {alert.msg && <><Alert variant={alert.type}>{alert.msg}</Alert><div className="mb-4" /></>}
+                  <div className="flex flex-col gap-3 mb-5">
+                    <div>
+                      <Input label="New Password" type="password" placeholder="At least 8 characters" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                      <PasswordStrength password={newPassword} />
+                    </div>
+                    <Input label="Confirm New Password" type="password" placeholder="Repeat your new password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+                  </div>
+                  <Button className="w-full" loading={loading} onClick={handleNewPassword}>Update password</Button>
+                </div>
+              )}
             </div>
           )}
         </div>

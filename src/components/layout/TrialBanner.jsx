@@ -1,15 +1,15 @@
 import { getTrialDaysLeft, isTrialExpired } from '../../lib/trial'
 import { Button } from '../ui/Button'
+import { useAuth } from '../../hooks/useAuth.jsx'
 
 export default function TrialBanner({ onUpgrade }) {
-  const daysLeft = getTrialDaysLeft()
-  const expired  = isTrialExpired()
-
-  if (!getTrialDaysLeft() && !expired) return null
+  const { user } = useAuth()
+  const daysLeft = getTrialDaysLeft(user)
+  const expired  = isTrialExpired(user)
 
   if (expired) {
     return (
-      <div className="flex items-center justify-between gap-3 px-7 py-2.5 bg-red-500/10 border-b border-red-500/20 flex-wrap">
+      <div className="flex items-center justify-between gap-3 px-4 lg:px-7 py-2.5 bg-red-500/10 border-b border-red-500/20 flex-wrap">
         <p className="text-sm text-red-300 font-medium">
           ⏰ Your free trial has ended. Upgrade to keep sending documents.
         </p>
@@ -20,7 +20,7 @@ export default function TrialBanner({ onUpgrade }) {
 
   const urgent = daysLeft <= 3
   return (
-    <div className={`flex items-center justify-between gap-3 px-7 py-2.5 border-b flex-wrap
+    <div className={`flex items-center justify-between gap-3 px-4 lg:px-7 py-2.5 border-b flex-wrap
       ${urgent
         ? 'bg-red-500/10 border-red-500/20'
         : 'bg-blue-600/10 border-blue-600/20'
