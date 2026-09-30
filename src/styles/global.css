@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy:   #0A1628;
+  --navy2:  #111F3A;
+  --blue:   #2563EB;
+  --blue2:  #1D4ED8;
+  --green:  #10B981;
+  --slate:  #94A3B8;
+  --border: rgba(255,255,255,0.08);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--navy); color: #fff; -webkit-font-smoothing: antialiased; }
+a { text-decoration: none; color: inherit; }
