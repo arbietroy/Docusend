@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { CONTACT_EMAIL } from '../lib/config'
 
 export default function LandingPage() {
   const navigate = useNavigate()
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const steps = [
     { num:'01', icon:'⚙️', title:'Set up your products', desc:'Add your products, set prices, upload your document templates, and connect your Gmail. Takes less than 10 minutes.' },
@@ -24,159 +27,182 @@ export default function LandingPage() {
     { name:'Enterprise', price:'Custom',   period:'Setup fee + monthly', features:['Everything in Growth','Fully managed setup','Custom document design','Dedicated account manager','Monthly performance review','Staff training'], btn:'Talk to us',  featured:false },
   ]
 
+  const eyebrow = 'text-xs font-semibold text-blue-600 tracking-wider uppercase mb-4'
+  const h2      = 'text-[28px] sm:text-4xl lg:text-[42px] font-extrabold tracking-tight leading-tight mb-4'
+  const lead    = 'text-base text-slate-400 max-w-[520px] leading-relaxed mb-10 lg:mb-14'
+  const btnPrimary   = 'bg-blue-600 hover:bg-blue-700 text-white px-7 py-3.5 rounded-lg text-[15px] font-semibold transition-colors text-center'
+  const btnSecondary = 'border border-white/20 hover:border-white/40 text-white px-7 py-3.5 rounded-lg text-[15px] font-medium transition-colors text-center'
+  const navLinks = [['#how-it-works','How it works'],['#features','Features'],['#pricing','Pricing']]
+
   return (
-    <div style={{ fontFamily:'Inter,sans-serif', background:'#0A1628', color:'#fff', lineHeight:'1.6' }}>
+    <div className="bg-navy text-white leading-relaxed overflow-x-hidden">
 
       {/* ── NAV ── */}
-      <nav style={{ position:'fixed', top:0, left:0, right:0, zIndex:100, padding:'18px 6%', display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(10,22,40,0.85)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
-        <a href="/" style={{ fontSize:22, fontWeight:800, color:'#fff', textDecoration:'none' }}>
-          Docu<span style={{ color:'#2563EB' }}>Send</span>
-        </a>
-        <div style={{ display:'flex', alignItems:'center', gap:32 }}>
-          <a href="#how-it-works" style={{ color:'#94A3B8', fontSize:14, textDecoration:'none' }}>How it works</a>
-          <a href="#features"     style={{ color:'#94A3B8', fontSize:14, textDecoration:'none' }}>Features</a>
-          <a href="#pricing"      style={{ color:'#94A3B8', fontSize:14, textDecoration:'none' }}>Pricing</a>
-          <button onClick={() => navigate('/auth')} style={{ background:'#2563EB', color:'#fff', border:'none', padding:'10px 22px', borderRadius:6, fontSize:14, fontWeight:600, cursor:'pointer' }}>
-            Get started
-          </button>
+      <nav className="fixed inset-x-0 top-0 z-50 bg-navy/85 backdrop-blur-md border-b border-white/8">
+        <div className="flex items-center justify-between px-4 sm:px-[6%] py-4">
+          <a href="/" className="text-[22px] font-extrabold">Docu<span className="text-blue-600">Send</span></a>
+          <div className="hidden md:flex items-center gap-8">
+            {navLinks.map(([href, label]) => (
+              <a key={href} href={href} className="text-sm text-slate-400 hover:text-white transition-colors">{label}</a>
+            ))}
+            <button onClick={() => navigate('/auth?mode=login')} className="text-sm text-slate-300 hover:text-white">Sign in</button>
+            <button onClick={() => navigate('/auth')} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-md text-sm font-semibold">Get started</button>
+          </div>
+          <div className="flex md:hidden items-center gap-2">
+            <button onClick={() => navigate('/auth')} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-semibold">Get started</button>
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              className="w-10 h-10 rounded-lg border border-white/10 flex items-center justify-center text-lg"
+              aria-label="Menu"
+              aria-expanded={menuOpen}
+            >
+              {menuOpen ? '✕' : '☰'}
+            </button>
+          </div>
         </div>
+        {menuOpen && (
+          <div className="md:hidden border-t border-white/8 px-4 py-3 flex flex-col">
+            {navLinks.map(([href, label]) => (
+              <a key={href} href={href} onClick={() => setMenuOpen(false)} className="py-3 text-base text-slate-300 border-b border-white/5">{label}</a>
+            ))}
+            <button onClick={() => navigate('/auth?mode=login')} className="py-3 text-left text-base text-slate-300">Sign in</button>
+          </div>
+        )}
       </nav>
 
       {/* ── HERO ── */}
-      <section style={{ minHeight:'100vh', padding:'140px 6% 100px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:60, alignItems:'center', position:'relative', overflow:'hidden' }}>
-        <div style={{ position:'absolute', top:-200, right:-200, width:700, height:700, background:'radial-gradient(circle,rgba(37,99,235,0.15) 0%,transparent 70%)', pointerEvents:'none' }} />
-        <div>
-          <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(37,99,235,0.12)', border:'1px solid rgba(37,99,235,0.3)', padding:'6px 14px', borderRadius:100, fontSize:12, fontWeight:600, color:'#60A5FA', marginBottom:28 }}>
-            <span style={{ width:6, height:6, background:'#60A5FA', borderRadius:'50%', animation:'pulse 2s infinite', display:'inline-block' }} />
+      <section className="relative overflow-hidden min-h-0 lg:min-h-screen px-4 sm:px-[6%] pt-28 pb-16 lg:pt-36 lg:pb-24 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="absolute -top-48 -right-48 w-[700px] h-[700px] pointer-events-none" style={{ background:'radial-gradient(circle,rgba(37,99,235,0.15) 0%,transparent 70%)' }} />
+        <div className="relative min-w-0">
+          <div className="inline-flex items-center gap-2 bg-blue-600/12 border border-blue-600/30 px-3.5 py-1.5 rounded-full text-xs font-semibold text-blue-400 mb-7">
+            <span className="w-1.5 h-1.5 bg-blue-400 rounded-full inline-block" style={{ animation:'pulse 2s infinite' }} />
             Now available for African businesses
           </div>
-          <h1 style={{ fontSize:'clamp(38px,5vw,60px)', fontWeight:900, lineHeight:1.08, letterSpacing:-2, marginBottom:24 }}>
-            Stop sending documents <span style={{ color:'#2563EB' }}>manually.</span>
+          <h1 className="text-[38px] sm:text-5xl lg:text-6xl font-black leading-[1.08] tracking-tight mb-6">
+            Stop sending documents <span className="text-blue-600">manually.</span>
           </h1>
-          <p style={{ fontSize:17, color:'#94A3B8', lineHeight:1.7, maxWidth:480, marginBottom:40 }}>
+          <p className="text-base sm:text-[17px] text-slate-400 leading-relaxed max-w-[480px] mb-10">
             DocuSend automates your entire payment-to-document workflow. A client pays, you confirm, and contracts, receipts, and letters go out instantly — without you lifting a finger.
           </p>
-          <div style={{ display:'flex', gap:14 }}>
-            <button onClick={() => navigate('/auth')} style={{ background:'#2563EB', color:'#fff', border:'none', padding:'14px 28px', borderRadius:8, fontSize:15, fontWeight:600, cursor:'pointer' }}>
-              Start your free trial
-            </button>
-            <a href="#how-it-works" style={{ background:'transparent', color:'#fff', border:'1px solid rgba(255,255,255,0.2)', padding:'14px 28px', borderRadius:8, fontSize:15, fontWeight:500, textDecoration:'none' }}>
-              See how it works
-            </a>
+          <div className="flex flex-col sm:flex-row gap-3.5">
+            <button onClick={() => navigate('/auth')} className={btnPrimary}>Start your free trial</button>
+            <a href="#how-it-works" className={btnSecondary}>See how it works</a>
           </div>
-          <div style={{ display:'flex', gap:32, marginTop:52, paddingTop:32, borderTop:'1px solid rgba(255,255,255,0.08)' }}>
+          <div className="grid grid-cols-3 gap-4 sm:flex sm:gap-8 mt-12 pt-8 border-t border-white/8">
             {[['3 sec','Document delivery time'],['100%','Automated after confirmation'],['0','Manual errors']].map(([num, label]) => (
               <div key={label}>
-                <div style={{ fontSize:28, fontWeight:800, letterSpacing:-1 }}>{num}</div>
-                <div style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>{label}</div>
+                <div className="text-2xl sm:text-[28px] font-extrabold tracking-tight">{num}</div>
+                <div className="text-xs text-slate-400 mt-0.5 leading-snug">{label}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* Dashboard mockup */}
-        <div style={{ background:'#111F3A', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, overflow:'hidden', boxShadow:'0 40px 80px rgba(0,0,0,0.5)' }}>
-          <div style={{ background:'rgba(255,255,255,0.03)', padding:'14px 20px', borderBottom:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', gap:8 }}>
-            {['#FF5F57','#FEBC2E','#28C840'].map(c => <div key={c} style={{ width:10, height:10, borderRadius:'50%', background:c }} />)}
-            <span style={{ fontSize:12, color:'#94A3B8', marginLeft:8 }}>DocuSend — Client Payments</span>
+        <div className="relative min-w-0 bg-navy2 border border-white/8 rounded-2xl overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.5)]">
+          <div className="bg-white/3 px-5 py-3.5 border-b border-white/8 flex items-center gap-2">
+            {['#FF5F57','#FEBC2E','#28C840'].map(c => <div key={c} className="w-2.5 h-2.5 rounded-full" style={{ background:c }} />)}
+            <span className="text-xs text-slate-400 ml-2 truncate">DocuSend — Client Payments</span>
           </div>
-          <div style={{ padding:20 }}>
-            <p style={{ fontSize:11, fontWeight:600, color:'#94A3B8', letterSpacing:0.5, marginBottom:16, textTransform:'uppercase' }}>Recent Payments</p>
+          <div className="p-3 sm:p-5">
+            <p className="text-[11px] font-semibold text-slate-400 tracking-wide mb-4 uppercase">Recent Payments</p>
             {[
               { initials:'AO', color:'#2563EB', name:'Adebayo Okafor',  sub:'Plot A3 · Initial Deposit',  amount:'₦1,000,000', status:'Sent',    sc:'#10B981' },
               { initials:'FN', color:'#7C3AED', name:'Fatima Nwosu',    sub:'Plot B7 · 2nd Installment',  amount:'₦500,000',   status:'Sent',    sc:'#10B981' },
               { initials:'KA', color:'#0891B2', name:'Kemi Adeyemi',    sub:'Plot C2 · Outright Payment', amount:'₦2,000,000', status:'Pending', sc:'#F59E0B' },
               { initials:'EM', color:'#DC2626', name:'Emeka Martins',   sub:'Apt 4B · Initial Deposit',   amount:'₦800,000',   status:'Confirm', sc:'#60A5FA' },
             ].map((r, i) => (
-              <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderRadius:8, background:'rgba(255,255,255,0.03)', marginBottom:8, gap:12 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10, flex:1 }}>
-                  <div style={{ width:32, height:32, borderRadius:'50%', background:r.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, flexShrink:0 }}>{r.initials}</div>
-                  <div><p style={{ fontSize:13, fontWeight:500 }}>{r.name}</p><p style={{ fontSize:11, color:'#94A3B8' }}>{r.sub}</p></div>
+              <div key={i} className="flex items-center justify-between px-3 sm:px-3.5 py-3 rounded-lg bg-white/3 mb-2 gap-2 sm:gap-3">
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background:r.color }}>{r.initials}</div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-medium truncate">{r.name}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{r.sub}</p>
+                  </div>
                 </div>
-                <span style={{ fontSize:13, fontWeight:600, color:'#10B981' }}>{r.amount}</span>
-                <span style={{ fontSize:10, fontWeight:600, padding:'3px 10px', borderRadius:100, background:`${r.sc}20`, color:r.sc }}>{r.status}</span>
+                <span className="text-xs sm:text-[13px] font-semibold text-emerald-500 shrink-0">{r.amount}</span>
+                <span className="hidden sm:inline text-[10px] font-semibold px-2.5 py-0.5 rounded-full shrink-0" style={{ background:`${r.sc}20`, color:r.sc }}>{r.status}</span>
               </div>
             ))}
-            <div style={{ marginTop:16, padding:14, background:'rgba(37,99,235,0.08)', borderRadius:8, border:'1px solid rgba(37,99,235,0.2)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <span style={{ fontSize:12, color:'#60A5FA', fontWeight:500 }}>Documents sent this month</span>
-              <span style={{ fontSize:20, fontWeight:800 }}>47</span>
+            <div className="mt-4 p-3.5 bg-blue-600/8 rounded-lg border border-blue-600/20 flex justify-between items-center">
+              <span className="text-xs text-blue-400 font-medium">Documents sent this month</span>
+              <span className="text-xl font-extrabold">47</span>
             </div>
           </div>
         </div>
       </section>
 
       {/* ── LOGOS ── */}
-      <div style={{ padding:'40px 6%', borderTop:'1px solid rgba(255,255,255,0.08)', borderBottom:'1px solid rgba(255,255,255,0.08)', textAlign:'center' }}>
-        <p style={{ fontSize:12, color:'#94A3B8', marginBottom:28 }}>Trusted by businesses across Nigeria</p>
-        <div style={{ display:'flex', justifyContent:'center', gap:16, flexWrap:'wrap' }}>
+      <div className="px-4 sm:px-[6%] py-10 border-y border-white/8 text-center">
+        <p className="text-xs text-slate-400 mb-7">Trusted by businesses across Nigeria</p>
+        <div className="flex justify-center gap-2.5 sm:gap-4 flex-wrap">
           {['Real Estate','Property Development','Financial Services','Retail','Cooperatives'].map(t => (
-            <span key={t} style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', padding:'10px 24px', borderRadius:6, fontSize:13, fontWeight:600, color:'#94A3B8' }}>{t}</span>
+            <span key={t} className="bg-white/5 border border-white/8 px-4 sm:px-6 py-2 sm:py-2.5 rounded-md text-xs sm:text-[13px] font-semibold text-slate-400">{t}</span>
           ))}
         </div>
       </div>
 
       {/* ── HOW IT WORKS ── */}
-      <section id="how-it-works" style={{ padding:'100px 6%' }}>
-        <p style={{ fontSize:12, fontWeight:600, color:'#2563EB', letterSpacing:1, marginBottom:16, textTransform:'uppercase' }}>How it works</p>
-        <h2 style={{ fontSize:'clamp(28px,3.5vw,42px)', fontWeight:800, letterSpacing:-1.5, marginBottom:16 }}>Three steps from payment to inbox</h2>
-        <p style={{ fontSize:16, color:'#94A3B8', maxWidth:520, lineHeight:1.7, marginBottom:60 }}>DocuSend removes the manual work between receiving a payment and delivering professional documents.</p>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:2 }}>
+      <section id="how-it-works" className="px-4 sm:px-[6%] py-16 lg:py-24 scroll-mt-16">
+        <p className={eyebrow}>How it works</p>
+        <h2 className={h2}>Three steps from payment to inbox</h2>
+        <p className={lead}>DocuSend removes the manual work between receiving a payment and delivering professional documents.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-0.5 rounded-xl overflow-hidden">
           {steps.map((s, i) => (
-            <div key={i} style={{ padding:'40px 36px', background:'#111F3A', borderRadius: i === 0 ? '12px 0 0 12px' : i === 2 ? '0 12px 12px 0' : 0 }}>
-              <div style={{ fontSize:48, fontWeight:900, color:'rgba(37,99,235,0.15)', letterSpacing:-2, lineHeight:1, marginBottom:24 }}>{s.num}</div>
-              <div style={{ width:44, height:44, borderRadius:10, background:'rgba(37,99,235,0.12)', border:'1px solid rgba(37,99,235,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, marginBottom:20 }}>{s.icon}</div>
-              <h3 style={{ fontSize:17, fontWeight:700, marginBottom:10 }}>{s.title}</h3>
-              <p style={{ fontSize:14, color:'#94A3B8', lineHeight:1.6 }}>{s.desc}</p>
+            <div key={i} className="bg-navy2 px-6 py-8 lg:px-9 lg:py-10">
+              <div className="text-5xl font-black text-blue-600/15 tracking-tight leading-none mb-6">{s.num}</div>
+              <div className="w-11 h-11 rounded-[10px] bg-blue-600/12 border border-blue-600/20 flex items-center justify-center text-xl mb-5">{s.icon}</div>
+              <h3 className="text-[17px] font-bold mb-2.5">{s.title}</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">{s.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── FEATURES ── */}
-      <section id="features" style={{ padding:'100px 6%', background:'#111F3A' }}>
-        <p style={{ fontSize:12, fontWeight:600, color:'#2563EB', letterSpacing:1, marginBottom:16, textTransform:'uppercase' }}>Features</p>
-        <h2 style={{ fontSize:'clamp(28px,3.5vw,42px)', fontWeight:800, letterSpacing:-1.5, marginBottom:16 }}>Everything your business needs</h2>
-        <p style={{ fontSize:16, color:'#94A3B8', maxWidth:520, lineHeight:1.7, marginBottom:60 }}>Built for businesses that collect payments and need to move fast without sacrificing professionalism.</p>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:2 }}>
+      <section id="features" className="px-4 sm:px-[6%] py-16 lg:py-24 bg-navy2 scroll-mt-16">
+        <p className={eyebrow}>Features</p>
+        <h2 className={h2}>Everything your business needs</h2>
+        <p className={lead}>Built for businesses that collect payments and need to move fast without sacrificing professionalism.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-0.5 rounded-xl overflow-hidden">
           {features.map((f, i) => (
-            <div key={i} style={{ padding:40, background:'#0A1628', transition:'background 0.2s', cursor:'default',
-              borderRadius: i===0?'12px 0 0 0':i===1?'0 12px 0 0':i===4?'0 0 0 12px':i===5?'0 0 12px 0':0 }}
-              onMouseEnter={e => e.currentTarget.style.background='#0D1E36'}
-              onMouseLeave={e => e.currentTarget.style.background='#0A1628'}
-            >
-              <div style={{ width:48, height:48, borderRadius:12, background:'rgba(37,99,235,0.1)', border:'1px solid rgba(37,99,235,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, marginBottom:20 }}>{f.icon}</div>
-              <h3 style={{ fontSize:18, fontWeight:700, marginBottom:10 }}>{f.title}</h3>
-              <p style={{ fontSize:14, color:'#94A3B8', lineHeight:1.65 }}>{f.desc}</p>
+            <div key={i} className="bg-navy hover:bg-[#0D1E36] transition-colors p-6 lg:p-10">
+              <div className="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-600/20 flex items-center justify-center text-[22px] mb-5">{f.icon}</div>
+              <h3 className="text-lg font-bold mb-2.5">{f.title}</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── PRICING ── */}
-      <section id="pricing" style={{ padding:'100px 6%' }}>
-        <p style={{ fontSize:12, fontWeight:600, color:'#2563EB', letterSpacing:1, marginBottom:16, textTransform:'uppercase' }}>Pricing</p>
-        <h2 style={{ fontSize:'clamp(28px,3.5vw,42px)', fontWeight:800, letterSpacing:-1.5, marginBottom:16 }}>Simple, honest pricing</h2>
-        <p style={{ fontSize:16, color:'#94A3B8', maxWidth:520, lineHeight:1.7, marginBottom:60 }}>Start with a one-time setup and pay monthly. No hidden fees, no contracts.</p>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:20 }}>
+      <section id="pricing" className="px-4 sm:px-[6%] py-16 lg:py-24 scroll-mt-16">
+        <p className={eyebrow}>Pricing</p>
+        <h2 className={h2}>Simple, honest pricing</h2>
+        <p className={lead}>Start with a one-time setup and pay monthly. No hidden fees, no contracts.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-5">
           {plans.map((p, i) => (
-            <div key={i} style={{ background: p.featured ? '#2563EB' : '#111F3A', border:`1px solid ${p.featured ? '#2563EB' : 'rgba(255,255,255,0.08)'}`, borderRadius:12, padding:36, position:'relative' }}>
+            <div key={i} className={`relative rounded-xl p-7 lg:p-9 border ${p.featured ? 'bg-blue-600 border-blue-600' : 'bg-navy2 border-white/8'}`}>
               {p.badge && (
-                <div style={{ position:'absolute', top:-12, left:'50%', transform:'translateX(-50%)', background:'#10B981', color:'#fff', fontSize:11, fontWeight:700, padding:'4px 14px', borderRadius:100, whiteSpace:'nowrap' }}>{p.badge}</div>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[11px] font-bold px-3.5 py-1 rounded-full whitespace-nowrap">{p.badge}</div>
               )}
-              <p style={{ fontSize:12, fontWeight:600, color: p.featured ? 'rgba(255,255,255,0.7)' : '#94A3B8', letterSpacing:0.5, marginBottom:16 }}>{p.name}</p>
-              <p style={{ fontSize:36, fontWeight:900, letterSpacing:-1.5, marginBottom:4 }}>{p.price}</p>
-              <p style={{ fontSize:13, color: p.featured ? 'rgba(255,255,255,0.7)' : '#94A3B8', marginBottom:28 }}>{p.period}</p>
-              <div style={{ height:1, background: p.featured ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)', marginBottom:24 }} />
-              <ul style={{ listStyle:'none', marginBottom:32 }}>
+              <p className={`text-xs font-semibold tracking-wide mb-4 ${p.featured ? 'text-white/70' : 'text-slate-400'}`}>{p.name}</p>
+              <p className="text-4xl font-black tracking-tight mb-1">{p.price}</p>
+              <p className={`text-[13px] mb-7 ${p.featured ? 'text-white/70' : 'text-slate-400'}`}>{p.period}</p>
+              <div className={`h-px mb-6 ${p.featured ? 'bg-white/15' : 'bg-white/8'}`} />
+              <ul className="mb-8">
                 {p.features.map(f => (
-                  <li key={f} style={{ fontSize:14, color: p.featured ? 'rgba(255,255,255,0.85)' : '#94A3B8', padding:'7px 0', display:'flex', alignItems:'center', gap:10 }}>
-                    <span style={{ color: p.featured ? '#fff' : '#10B981', fontWeight:700 }}>✓</span> {f}
+                  <li key={f} className={`text-sm py-1.5 flex items-center gap-2.5 ${p.featured ? 'text-white/85' : 'text-slate-400'}`}>
+                    <span className={`font-bold ${p.featured ? 'text-white' : 'text-emerald-500'}`}>✓</span> {f}
                   </li>
                 ))}
               </ul>
               <button
-                onClick={() => navigate('/auth')}
-                style={{ display:'block', width:'100%', textAlign:'center', padding:13, borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer', border: p.featured ? 'none' : '1px solid rgba(255,255,255,0.2)', background: p.featured ? '#fff' : 'transparent', color: p.featured ? '#2563EB' : '#fff', transition:'all 0.2s' }}
+                onClick={() => p.name === 'Enterprise' && CONTACT_EMAIL
+                  ? (window.location.href = `mailto:${CONTACT_EMAIL}?subject=DocuSend%20Enterprise`)
+                  : navigate('/auth')}
+                className={`block w-full text-center py-3.5 rounded-lg text-sm font-semibold transition-colors
+                  ${p.featured ? 'bg-white text-blue-600 hover:bg-white/90' : 'border border-white/20 hover:border-white/40 text-white'}`}
               >{p.btn}</button>
             </div>
           ))}
@@ -184,29 +210,29 @@ export default function LandingPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section style={{ padding:'100px 6%', textAlign:'center', position:'relative', overflow:'hidden' }}>
-        <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:800, height:400, background:'radial-gradient(ellipse,rgba(37,99,235,0.12) 0%,transparent 70%)', pointerEvents:'none' }} />
-        <h2 style={{ fontSize:'clamp(32px,4vw,52px)', fontWeight:900, letterSpacing:-2, lineHeight:1.1, marginBottom:20, position:'relative' }}>
+      <section className="relative overflow-hidden px-4 sm:px-[6%] py-16 lg:py-24 text-center">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] pointer-events-none" style={{ background:'radial-gradient(ellipse,rgba(37,99,235,0.12) 0%,transparent 70%)' }} />
+        <h2 className="relative text-[32px] sm:text-4xl lg:text-[52px] font-black tracking-tight leading-[1.1] mb-5">
           Your next client deserves a faster response.
         </h2>
-        <p style={{ fontSize:17, color:'#94A3B8', marginBottom:40, maxWidth:480, marginLeft:'auto', marginRight:'auto', position:'relative' }}>
+        <p className="relative text-base sm:text-[17px] text-slate-400 mb-10 max-w-[480px] mx-auto">
           Set up DocuSend in under 10 minutes and never manually send a document again.
         </p>
-        <div style={{ display:'flex', gap:14, justifyContent:'center', position:'relative' }}>
-          <button onClick={() => navigate('/auth')} style={{ background:'#2563EB', color:'#fff', border:'none', padding:'14px 28px', borderRadius:8, fontSize:15, fontWeight:600, cursor:'pointer' }}>Start your free trial</button>
-          <button style={{ background:'transparent', color:'#fff', border:'1px solid rgba(255,255,255,0.2)', padding:'14px 28px', borderRadius:8, fontSize:15, fontWeight:500, cursor:'pointer' }}>Book a demo</button>
+        <div className="relative flex flex-col sm:flex-row gap-3.5 justify-center">
+          <button onClick={() => navigate('/auth')} className={btnPrimary}>Start your free trial</button>
+          {CONTACT_EMAIL && <a href={`mailto:${CONTACT_EMAIL}?subject=DocuSend%20demo`} className={btnSecondary}>Book a demo</a>}
         </div>
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ padding:'40px 6%', borderTop:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:16 }}>
-        <a href="/" style={{ fontSize:18, fontWeight:800, textDecoration:'none', color:'#fff' }}>Docu<span style={{ color:'#2563EB' }}>Send</span></a>
-        <div style={{ display:'flex', gap:28 }}>
+      <footer className="px-4 sm:px-[6%] py-10 border-t border-white/8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center">
+        <a href="/" className="text-lg font-extrabold">Docu<span className="text-blue-600">Send</span></a>
+        <div className="flex gap-5 sm:gap-7 flex-wrap justify-center">
           {['Privacy Policy','Terms of Service','Contact'].map(l => (
-            <a key={l} href="#" style={{ fontSize:13, color:'#94A3B8', textDecoration:'none' }}>{l}</a>
+            <a key={l} href="#" className="text-[13px] text-slate-400 hover:text-white">{l}</a>
           ))}
         </div>
-        <p style={{ fontSize:12, color:'#94A3B8' }}>© 2026 DocuSend. All rights reserved.</p>
+        <p className="text-xs text-slate-400">© 2026 DocuSend. All rights reserved.</p>
       </footer>
 
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>

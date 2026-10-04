@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button'
 import { Input, Select } from '../components/ui/Input'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { getPlan, getTrialDaysLeft, getTrialEnd } from '../lib/trial'
+import { CONTACT_EMAIL } from '../lib/config'
 
 // ── Stat Card ──
 function StatCard({ label, value, change, changeType = 'neutral' }) {
@@ -40,7 +41,7 @@ function Table({ headers, children, minWidth }) {
 }
 
 function Td({ children, className = '' }) {
-  return <td className={`px-4 py-3 text-sm border-b border-white/4 ${className}`}>{children}</td>
+  return <td className={`px-4 py-3 text-sm border-b border-white/4 whitespace-nowrap ${className}`}>{children}</td>
 }
 
 // ── Overview Page ──
@@ -558,7 +559,7 @@ function Billing() {
                 {isCurrent ? (
                   <Button size="sm" className="w-full justify-center" disabled>Pay now · coming soon</Button>
                 ) : p.id === 'enterprise' ? (
-                  <Button size="sm" variant="secondary" className="w-full justify-center" onClick={() => { window.location.href = 'mailto:hello@docusend.ng?subject=DocuSend%20Enterprise' }}>Contact us</Button>
+                  <Button size="sm" variant="secondary" className="w-full justify-center" disabled={!CONTACT_EMAIL} onClick={() => { window.location.href = `mailto:${CONTACT_EMAIL}?subject=DocuSend%20Enterprise` }}>Contact us</Button>
                 ) : (
                   <Button size="sm" variant="secondary" className="w-full justify-center" loading={switching === p.id} onClick={() => selectPlan(p.id)}>Select</Button>
                 )}
