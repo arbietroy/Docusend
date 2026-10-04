@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from './hooks/useAuth.jsx'
+import { AuthProvider, useAuth, needsOnboarding } from './hooks/useAuth.jsx'
 
 // Pages
 import LandingPage   from './pages/LandingPage'
@@ -14,7 +14,9 @@ function ProtectedRoute({ children }) {
       <div style={{ color:'#94A3B8', fontSize:14 }}>Loading...</div>
     </div>
   )
-  return user ? children : <Navigate to="/auth" replace />
+  if (!user) return <Navigate to="/auth" replace />
+  if (needsOnboarding(user)) return <Navigate to="/auth" replace />
+  return children
 }
 
 export default function App() {

@@ -1,30 +1,26 @@
 export const TRIAL_DAYS = 14
+const DAY_MS = 24 * 60 * 60 * 1000
 
-export function getTrialData() {
-  try {
-    const raw = localStorage.getItem('docusend_trial')
-    return raw ? JSON.parse(raw) : null
-  } catch { return null }
+// The trial is anchored to the Supabase account's creation date, so it follows
+// the user across devices and can't be reset by clearing browser storage.
+export function getTrialEnd(user) {
+  if (!user?.created_at) return null
+  return new Date(new Date(user.created_at).getTime() + TRIAL_DAYS * DAY_MS)
 }
 
-export function setTrialData(plan = 'growth', businessName = '') {
-  const now = new Date()
-  const end = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
-  const data = { plan, businessName, startDate: now.toISOString(), endDate: end.toISOString() }
-  localStorage.setItem('docusend_trial', JSON.stringify(data))
-  return data
+export function getTrialDaysLeft(user) {
+  const end = getTrialEnd(user)
+  if (!end) return TRIAL_DAYS
+  return Math.max(0, Math.ceil((end - new Date()) / DAY_MS))
 }
 
-export function getTrialDaysLeft() {
-  const trial = getTrialData()
-  if (!trial) return TRIAL_DAYS
-  const msLeft = new Date(trial.endDate) - new Date()
-  return Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)))
+export function isTrialActive(user) { return getTrialDaysLeft(user) > 0 }
+
+export function isTrialExpired(user) {
+  const end = getTrialEnd(user)
+  return !!end && new Date() > end
 }
 
-export function isTrialActive() { return getTrialDaysLeft() > 0 }
-export function isTrialExpired() {
-  const trial = getTrialData()
-  if (!trial) return false
-  return new Date() > new Date(trial.endDate)
+export function getPlan(user) {
+  return user?.user_metadata?.plan || 'growth'
 }

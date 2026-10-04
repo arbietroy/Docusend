@@ -22,10 +22,21 @@ Then deploy the `dist/` folder to Vercel.
 ## Supabase
 Already configured with your project credentials in `src/lib/supabase.js`.
 
+One-time dashboard setup:
+- **Auth → URL Configuration → Redirect URLs**: add every origin the app runs on,
+  e.g. `http://localhost:5173/**`, `https://docusendwebapp.vercel.app/**` and
+  `https://*-<your-vercel-team>.vercel.app/**` for preview deployments.
+- **Delete account**: deploy the edge function with
+  `supabase functions deploy delete-account`.
+
+Onboarding status, chosen plan, business profile and notification preferences
+are stored in the user's Supabase metadata. The 14-day trial runs from the
+account's creation date.
+
 ## Routes
 - `/`          → Landing Page
-- `/auth`      → Sign Up / Login / Onboarding
-- `/dashboard` → Dashboard (protected — requires login)
+- `/auth`      → Sign Up / Login / Onboarding / Password reset
+- `/dashboard` → Dashboard (protected — requires login and completed onboarding)
 
 ## Project Structure
 ```
