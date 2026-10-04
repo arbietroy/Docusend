@@ -1,40 +1,26 @@
-import { getTrialDaysLeft, isTrialExpired } from '../../lib/trial'
-import { Button } from '../ui/Button'
-import { useAuth } from '../../hooks/useAuth.jsx'
+import { Link } from 'react-router-dom'
+import { useOrg } from '../../hooks/useOrg.jsx'
+import { trialDaysLeft, isTrialExpired } from '../../lib/trial'
 
-export default function TrialBanner({ onUpgrade }) {
-  const { user } = useAuth()
-  const daysLeft = getTrialDaysLeft(user)
-  const expired  = isTrialExpired(user)
+export default function TrialBanner() {
+  const { org, can } = useOrg()
+  if (!org) return null
+  const daysLeft = trialDaysLeft(org)
+  const expired  = isTrialExpired(org)
+  const urgent   = expired || daysLeft <= 2
 
-  if (expired) {
-    return (
-      <div className="flex items-center justify-between gap-3 px-4 lg:px-7 py-2.5 bg-red-500/10 border-b border-red-500/20 flex-wrap">
-        <p className="text-sm text-red-300 font-medium">
-          ⏰ Your free trial has ended. Upgrade to keep sending documents.
-        </p>
-        <Button size="sm" onClick={onUpgrade}>Upgrade now</Button>
-      </div>
-    )
-  }
-
-  const urgent = daysLeft <= 3
   return (
-    <div className={`flex items-center justify-between gap-3 px-4 lg:px-7 py-2.5 border-b flex-wrap
-      ${urgent
-        ? 'bg-red-500/10 border-red-500/20'
-        : 'bg-blue-600/10 border-blue-600/20'
-      }`}
-    >
-      <p className="text-sm">
-        <span className="mr-2">🎁</span>
-        <span className="font-medium text-white">Free trial — </span>
-        <span className={urgent ? 'text-red-300 font-bold' : 'text-blue-300 font-semibold'}>
-          {daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining
-        </span>
-        <span className="text-slate-400 ml-1.5">· Full access to all features</span>
+    <div className={`flex items-center justify-between gap-3 px-4 lg:px-7 py-2 border-b text-sm
+      ${urgent ? 'bg-red-500/10 border-red-500/20' : 'bg-blue-600/10 border-blue-600/20'}`}>
+      <p className="min-w-0">
+        {expired
+          ? <span className="text-red-300 font-medium">Your free trial has ended.</span>
+          : <><span className="font-medium">Free trial · </span>
+              <span className={urgent ? 'text-red-300 font-bold' : 'text-blue-300 font-semibold'}>{daysLeft} day{daysLeft !== 1 ? 's' : ''} left</span></>}
       </p>
-      <Button size="sm" onClick={onUpgrade}>Upgrade now</Button>
+      {can('billing') && (
+        <Link to="/app/billing" className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-md">Upgrade</Link>
+      )}
     </div>
   )
 }
