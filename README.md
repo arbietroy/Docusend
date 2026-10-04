@@ -14,6 +14,7 @@ proof of payment through the company's own online forms.
 3. **Account deletion (optional):** `supabase functions deploy delete-account`.
 
 Later database changes are added as new files in `supabase/migrations/`. Run only the new ones.
+Already applied: `20261004000001`–`20261004000003`. Run next: `20261005000001_documents.sql`.
 
 ## Routes
 
@@ -46,6 +47,11 @@ The database enforces these rules with row level security, so they hold even out
   payments. A client is *owing* when behind schedule, and *defaulting* once they're more than the
   company's grace period (default 30 days) late.
 - **Prices are locked** on each purchase, so changing a property's prices only affects new sales.
+- **Documents:** admins upload Word (.docx) templates with `{{placeholders}}` (see the in-app guide),
+  for the whole company or one property. The team generates documents for a purchase; they're
+  filled in the browser (docxtemplater), saved to the client's file, and can be previewed,
+  downloaded or printed to PDF. Sample templates live in `public/sample-templates`
+  (rebuild with `node scripts/make-sample-templates.mjs`).
 
 ## Development
 

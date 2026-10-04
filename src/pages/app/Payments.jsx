@@ -127,10 +127,10 @@ export function PaymentModal({ payment, onClose, onDone }) {
           <div className="text-4xl mb-3">✅</div>
           <p className="text-sm text-slate-300 mb-1">{naira(payment.amount)} from <strong>{s.clients?.full_name}</strong> is confirmed.</p>
           <p className="text-sm text-slate-400 mb-5">Receipt number <strong className="text-white">{result}</strong>. The client's balance has been updated.</p>
-          <Alert variant="info">Automatic receipts and documents by email are coming in the next update. For now, the receipt number is saved on the client's record.</Alert>
-          <div className="flex gap-2.5 mt-5">
-            <Link to={`/app/clients/${s.client_id}`} className="flex-1 text-center bg-white/5 border border-white/10 rounded-lg py-2.5 text-sm font-semibold">Open client</Link>
-            <Button className="flex-1" onClick={() => { close(); onDone() }}>Done</Button>
+          <div className="flex flex-col sm:flex-row gap-2.5 mt-5">
+            <Link to={`/app/clients/${s.client_id}?prepare=${payment.id}`} onClick={() => { close(); onDone() }}
+              className="flex-1 text-center bg-blue-600 hover:bg-blue-700 rounded-lg py-2.5 text-sm font-semibold">📄 Prepare documents</Link>
+            <Button variant="secondary" className="flex-1" onClick={() => { close(); onDone() }}>Done</Button>
           </div>
         </div>
       ) : (

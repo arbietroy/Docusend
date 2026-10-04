@@ -15,6 +15,7 @@ const SECTIONS = [
   { label: 'Directors', items: [
     { to: '/app/directors',  icon: '📈', label: 'Weekly summary', perm: 'viewReports' },
     { to: '/app/properties', icon: '🏘️', label: 'Properties', perm: 'manageProperties' },
+    { to: '/app/templates',  icon: '📄', label: 'Document templates', perm: 'manageProperties' },
     { to: '/app/activity',   icon: '🧾', label: 'Activity log', perm: 'viewActivity' },
   ]},
   { label: 'Account', items: [

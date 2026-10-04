@@ -9,7 +9,7 @@ import { Loading } from '../ui/Data'
 const TITLES = {
   '/app': 'Overview', '/app/payments': 'Payments', '/app/clients': 'Clients', '/app/clients/new': 'Add client',
   '/app/collections': 'Owing & defaulting', '/app/forms': 'Client forms', '/app/directors': 'Weekly summary',
-  '/app/properties': 'Properties', '/app/properties/new': 'New property', '/app/activity': 'Activity log',
+  '/app/properties': 'Properties', '/app/properties/new': 'New property', '/app/activity': 'Activity log', '/app/templates': 'Document templates',
   '/app/team': 'Team', '/app/settings': 'Settings', '/app/billing': 'Billing',
 }
 

@@ -21,6 +21,7 @@ import Activity     from './pages/app/Activity'
 import Team         from './pages/app/Team'
 import Settings     from './pages/app/Settings'
 import Billing      from './pages/app/Billing'
+import Templates    from './pages/app/Templates'
 
 function RequireUser({ children }) {
   const { user, loading } = useAuth()
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="team"            element={<Team />} />
           <Route path="settings"        element={<Settings />} />
           <Route path="billing"         element={<Billing />} />
+          <Route path="templates"       element={<Templates />} />
         </Route>
 
         <Route path="/dashboard" element={<Navigate to="/app" replace />} />
