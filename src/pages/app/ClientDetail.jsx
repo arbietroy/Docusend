@@ -39,10 +39,11 @@ export default function ClientDetail() {
   useEffect(() => {
     if (!prepare || !data) return
     const pay = data.payments.find(p => p.id === prepare)
-    if (pay && pay.status !== 'confirmed') return // fresh data is still loading
+    // Just confirmed: wait for the refreshed data before suggesting documents
+    if (pay && params.get('confirmed') && pay.status !== 'confirmed') return
     if (pay) setModal({ type: 'docs', purchase: data.purchases.find(x => x.id === pay.subscription_id), paymentId: pay.id })
     setParams({}, { replace: true })
-  }, [prepare, data, setParams])
+  }, [prepare, data, params, setParams])
 
   if (loading && !data) return <Loading />
   if (error) return <ErrorBox error={error} onRetry={reload} />
@@ -63,7 +64,7 @@ export default function ClientDetail() {
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center font-bold shrink-0">{initials(client.full_name)}</div>
           <div className="min-w-0">
-            <h2 className="text-lg font-bold truncate">{client.full_name}</h2>
+            <h2 className="text-lg font-bold truncate">{[client.title, client.full_name].filter(Boolean).join(' ')}</h2>
             <p className="text-sm text-slate-400 truncate">
               {purchases.map(p => p.client_number).filter(Boolean).join(' · ') || 'No client number yet'}
             </p>

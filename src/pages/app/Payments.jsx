@@ -128,7 +128,7 @@ export function PaymentModal({ payment, onClose, onDone }) {
           <p className="text-sm text-slate-300 mb-1">{naira(payment.amount)} from <strong>{s.clients?.full_name}</strong> is confirmed.</p>
           <p className="text-sm text-slate-400 mb-5">Receipt number <strong className="text-white">{result}</strong>. The client's balance has been updated.</p>
           <div className="flex flex-col sm:flex-row gap-2.5 mt-5">
-            <Link to={`/app/clients/${s.client_id}?prepare=${payment.id}`} onClick={() => { close(); onDone() }}
+            <Link to={`/app/clients/${s.client_id}?prepare=${payment.id}&confirmed=1`} onClick={() => { close(); onDone() }}
               className="flex-1 text-center bg-blue-600 hover:bg-blue-700 rounded-lg py-2.5 text-sm font-semibold">📄 Prepare documents</Link>
             <Button variant="secondary" className="flex-1" onClick={() => { close(); onDone() }}>Done</Button>
           </div>
@@ -151,9 +151,17 @@ export function PaymentModal({ payment, onClose, onDone }) {
             {payment.status === 'rejected' && <div className="col-span-2"><Field label="Rejected because">{payment.rejection_reason}</Field></div>}
           </div>
 
-          {payment.proof_path
-            ? <Button variant="secondary" className="w-full mb-4" onClick={viewProof}>📎 View proof of payment</Button>
-            : <p className="text-xs text-slate-500 mb-4">No proof of payment was attached.</p>}
+          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+            {payment.proof_path
+              ? <Button variant="secondary" className="flex-1" onClick={viewProof}>📎 View proof of payment</Button>
+              : <p className="text-xs text-slate-500 flex-1 self-center">No proof of payment was attached.</p>}
+            {payment.status !== 'rejected' && (
+              <Link to={`/app/clients/${s.client_id}?prepare=${payment.id}`} onClick={close}
+                className="flex-1 text-center text-sm font-semibold px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10">
+                📄 {payment.status === 'pending' ? 'Acknowledgement letter' : 'Documents'}
+              </Link>
+            )}
+          </div>
 
           {error && <div className="mb-4"><Alert>{error}</Alert></div>}
 

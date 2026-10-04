@@ -51,7 +51,7 @@ const { error: badUp } = await anon.storage.from('payment-proofs').upload(`not-a
 ok(!!badUp, 'upload outside a company folder is refused')
 
 const { error: subErr } = await anon.rpc('submit_subscription_form', { p_slug: slug, p: {
-  full_name: 'Chidi Okeke', email: 'chidi@example.com', phone: '0803 123 4567',
+  title: 'Mr.', full_name: 'Chidi Okeke', email: 'chidi@example.com', phone: '0803 123 4567',
   property_id: prop.id, payment_plan_id: sixMonth.id, units: 2, amount: 600000,
   realtor_name: 'Tola Realtor', realtor_email: 'tola@example.com', proof_path: proofPath,
 }})
@@ -70,6 +70,7 @@ ok(!accErr, 'invitee joins the company', accErr)
 
 const { data: bClients } = await B.c.from('clients').select('*')
 ok(bClients?.length === 1, 'team member can see the client list')
+ok(bClients?.[0]?.title === 'Mr.', 'the title from the form is saved', bClients?.[0]?.title)
 const { data: pending } = await B.c.from('payments').select('*').eq('status', 'pending')
 ok(pending?.length === 1, 'team member sees the pending payment')
 
@@ -148,6 +149,8 @@ const fakeDocx = () => new Blob(['PK fake docx'], { type: DOCX })
 const tplPath = `${orgId}/${crypto.randomUUID()}.docx`
 const { error: tplUp } = await A.c.storage.from('templates').upload(tplPath, fakeDocx(), { contentType: DOCX })
 ok(!tplUp, 'admin uploads a template file', tplUp)
+const { error: ackErr } = await A.c.from('document_templates').insert({ org_id: orgId, doc_type: 'acknowledgement', name: 'Acknowledgement', send_on: 'form_submitted', file_path: tplPath, file_name: 'ack.docx' }).select().single()
+ok(!ackErr, 'templates can be due when a client submits a payment', ackErr)
 const { data: tpl, error: tplErr } = await A.c.from('document_templates').insert({ org_id: orgId, doc_type: 'receipt', name: 'Receipt', send_on: 'every_payment', file_path: tplPath, file_name: 'receipt.docx' }).select().single()
 ok(!tplErr, 'admin saves a template', tplErr)
 const { error: bTpl } = await B.c.from('document_templates').insert({ org_id: orgId, doc_type: 'receipt', name: 'Hack', file_path: tplPath, file_name: 'x.docx' }).select().single()
@@ -167,7 +170,7 @@ const [{ data: cTpls }, { data: cDocs }, { data: cTplFile }, { data: cDocFile }]
   C.c.from('document_templates').select('*'), C.c.from('documents').select('*'),
   C.c.storage.from('templates').download(tplPath), C.c.storage.from('documents').download(docPath)])
 ok(cTpls.length === 0 && cDocs.length === 0 && !cTplFile && !cDocFile, "another company can't see templates or documents")
-const { data: logDocs } = await A.c.from('activity_log').select('summary').like('summary', 'Generated Receipt%')
+const { data: logDocs } = await A.c.from('activity_log').select('summary').like('summary', 'Generated Receipt ·%')
 ok(logDocs?.length === 1, 'generating a document is in the activity log')
 
 // ── Last super admin is protected ──

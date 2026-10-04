@@ -16,6 +16,9 @@ export function pickTemplate(templates, propertyId, docType) {
 
 // Which documents are due at this point in the client's journey
 export function suggestedTypes(templates, purchase, payment, purchasePayments) {
+  if (payment?.status === 'pending') {
+    return Object.keys(DOC_TYPES).filter(type => pickTemplate(templates, purchase.property_id, type)?.send_on === 'form_submitted')
+  }
   const confirmed = purchasePayments.filter(p => p.status === 'confirmed')
     .sort((a, b) => a.paid_on.localeCompare(b.paid_on) || String(a.reviewed_at).localeCompare(String(b.reviewed_at)))
   const isFirst = !!payment && confirmed[0]?.id === payment.id
@@ -23,6 +26,7 @@ export function suggestedTypes(templates, purchase, payment, purchasePayments) {
   return Object.keys(DOC_TYPES).filter(type => {
     const t = pickTemplate(templates, purchase.property_id, type)
     if (!t) return false
+    if (t.send_on === 'form_submitted') return false
     if (t.send_on === 'every_payment') return !!payment
     if (t.send_on === 'first_payment') return !!isFirst
     if (t.send_on === 'fully_paid') return fullyPaid
@@ -103,9 +107,10 @@ export function PreviewModal({ blob, name, onClose }) {
 // Choose which documents to generate for a purchase, fill them in and file them
 export function CreateDocumentsModal({ client, purchase, property, payments, templates, initialPaymentId, onClose, onSaved }) {
   const { org, can } = useOrg()
-  const confirmed = payments.filter(p => p.status === 'confirmed').sort((a, b) => b.paid_on.localeCompare(a.paid_on))
-  const [paymentId, setPaymentId] = useState(initialPaymentId || confirmed[0]?.id || '')
-  const payment = confirmed.find(p => p.id === paymentId)
+  // Acknowledgements can go out before a payment is confirmed; receipts can't
+  const usable = payments.filter(p => p.status !== 'rejected').sort((a, b) => b.paid_on.localeCompare(a.paid_on))
+  const [paymentId, setPaymentId] = useState(initialPaymentId || usable.find(p => p.status === 'confirmed')?.id || usable[0]?.id || '')
+  const payment = usable.find(p => p.id === paymentId)
   const available = Object.keys(DOC_TYPES).filter(type => pickTemplate(templates, purchase.property_id, type))
   const [selected, setSelected] = useState(() => new Set(suggestedTypes(templates, purchase, payment, payments)))
   const [busy, setBusy] = useState(false)
@@ -118,7 +123,8 @@ export function CreateDocumentsModal({ client, purchase, property, payments, tem
 
   const generate = async () => {
     if (!selected.size) return setError('Choose at least one document.')
-    if (needsPayment && !payment) return setError('Receipts and acknowledgements need a confirmed payment.')
+    if (needsPayment && !payment) return setError('Choose which payment these documents are for.')
+    if (selected.has('receipt') && payment?.status !== 'confirmed') return setError('A receipt can only be issued for a confirmed payment. Untick it, or confirm the payment first.')
     setBusy(true); setError('')
     const out = []
     try {
@@ -184,11 +190,12 @@ export function CreateDocumentsModal({ client, purchase, property, payments, tem
             ))}
           </div>
           {needsPayment && (
-            confirmed.length
-              ? <Select label="For which payment?" value={paymentId} onChange={e => setPaymentId(e.target.value)} className="mb-4">
-                  {confirmed.map(p => <option key={p.id} value={p.id}>{fmtDate(p.paid_on)} · {naira(p.amount)} · {p.receipt_number}</option>)}
+            usable.length
+              ? <Select label="For which payment?" value={paymentId} className="mb-4"
+                  onChange={e => { setPaymentId(e.target.value); setSelected(new Set(suggestedTypes(templates, purchase, usable.find(p => p.id === e.target.value), payments))) }}>
+                  {usable.map(p => <option key={p.id} value={p.id}>{fmtDate(p.paid_on)} · {naira(p.amount)} · {p.receipt_number || 'awaiting confirmation'}</option>)}
                 </Select>
-              : <div className="mb-4"><Alert variant="warning">This client has no confirmed payments yet, so receipts and acknowledgements can't be created.</Alert></div>
+              : <div className="mb-4"><Alert variant="warning">This client has no payments yet, so receipts and acknowledgements can't be created.</Alert></div>
           )}
           {!purchase.plot_numbers && [...selected].some(t => ['allocation_letter', 'deed_of_assignment', 'provisional_survey'].includes(t)) && (
             <div className="mb-4"><Alert variant="warning">No plot numbers are recorded for this purchase, so they'll show as "To be allocated". A team lead can add them with Edit on the purchase.</Alert></div>

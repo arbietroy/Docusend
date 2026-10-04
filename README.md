@@ -14,7 +14,7 @@ proof of payment through the company's own online forms.
 3. **Account deletion (optional):** `supabase functions deploy delete-account`.
 
 Later database changes are added as new files in `supabase/migrations/`. Run only the new ones.
-Already applied: `20261004000001`–`20261004000003`. Run next: `20261005000001_documents.sql`.
+Already applied: `20261004000001`–`20261004000003`. Run next: `20261005000001_documents.sql` and `20261005000002_document_details.sql` (both are safe to re-run).
 
 ## Routes
 
