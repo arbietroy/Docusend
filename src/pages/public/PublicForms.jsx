@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/Button'
 import { Input, Select, Textarea } from '../../components/ui/Input'
 import { Alert } from '../../components/ui/Badge'
 import { Loading } from '../../components/ui/Data'
-import { ID_TYPES } from '../app/clientForms'
+import { ID_TYPES, TITLES } from '../app/clientForms'
 
 function Shell({ company, title, subtitle, children }) {
   return (
@@ -97,7 +97,7 @@ const validEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())
 export function SubscribeForm() {
   const { slug, data: company, loading, error } = useCompany()
   const [v, setV] = useState({
-    full_name: '', email: '', phone: '', address: '', occupation: '', date_of_birth: '', id_type: '', id_number: '',
+    title: '', full_name: '', email: '', phone: '', address: '', occupation: '', date_of_birth: '', id_type: '', id_number: '',
     next_of_kin_name: '', next_of_kin_phone: '', next_of_kin_relationship: '',
     property_id: '', payment_plan_id: '', units: '1', realtor_name: '', realtor_email: '', realtor_phone: '',
     amount: '', paid_on: isoDate(), payer_name: '', bank_reference: '', notes: '',
@@ -151,7 +151,13 @@ export function SubscribeForm() {
     <Shell company={company} title="Subscription form" subtitle="Fill this form after making your payment. Fields marked * are required.">
       <Section n={1} title="Your details">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input label="Full name" required className="sm:col-span-2" value={v.full_name} onChange={set('full_name')} placeholder="As it should appear on your documents" />
+          <div className="sm:col-span-2 grid grid-cols-[110px_1fr] gap-3">
+            <Select label="Title" value={v.title} onChange={set('title')}>
+              <option value="">—</option>
+              {TITLES.map(t => <option key={t}>{t}</option>)}
+            </Select>
+            <Input label="Full name" required value={v.full_name} onChange={set('full_name')} placeholder="As it should appear on your documents" />
+          </div>
           <Input label="Email" required type="email" value={v.email} onChange={set('email')} hint="Your documents will be sent here" />
           <Input label="Phone" required type="tel" value={v.phone} onChange={set('phone')} />
           <Input label="Home address" className="sm:col-span-2" value={v.address} onChange={set('address')} />

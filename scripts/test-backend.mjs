@@ -51,7 +51,7 @@ const { error: badUp } = await anon.storage.from('payment-proofs').upload(`not-a
 ok(!!badUp, 'upload outside a company folder is refused')
 
 const { error: subErr } = await anon.rpc('submit_subscription_form', { p_slug: slug, p: {
-  full_name: 'Chidi Okeke', email: 'chidi@example.com', phone: '0803 123 4567',
+  title: 'Mr.', full_name: 'Chidi Okeke', email: 'chidi@example.com', phone: '0803 123 4567',
   property_id: prop.id, payment_plan_id: sixMonth.id, units: 2, amount: 600000,
   realtor_name: 'Tola Realtor', realtor_email: 'tola@example.com', proof_path: proofPath,
 }})
@@ -70,6 +70,7 @@ ok(!accErr, 'invitee joins the company', accErr)
 
 const { data: bClients } = await B.c.from('clients').select('*')
 ok(bClients?.length === 1, 'team member can see the client list')
+ok(bClients?.[0]?.title === 'Mr.', 'the title from the form is saved', bClients?.[0]?.title)
 const { data: pending } = await B.c.from('payments').select('*').eq('status', 'pending')
 ok(pending?.length === 1, 'team member sees the pending payment')
 
@@ -141,6 +142,36 @@ const { data: aProof } = await A.c.storage.from('payment-proofs').download(proof
 ok(!!aProof, 'company staff can download their payment proofs')
 const { error: cConfirm } = await C.c.rpc('confirm_payment', { p_payment: p2.id })
 ok(!!cConfirm, "another company cannot confirm this company's payments")
+
+// ── Document templates and generated documents ──
+const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const fakeDocx = () => new Blob(['PK fake docx'], { type: DOCX })
+const tplPath = `${orgId}/${crypto.randomUUID()}.docx`
+const { error: tplUp } = await A.c.storage.from('templates').upload(tplPath, fakeDocx(), { contentType: DOCX })
+ok(!tplUp, 'admin uploads a template file', tplUp)
+const { error: ackErr } = await A.c.from('document_templates').insert({ org_id: orgId, doc_type: 'acknowledgement', name: 'Acknowledgement', send_on: 'form_submitted', file_path: tplPath, file_name: 'ack.docx' }).select().single()
+ok(!ackErr, 'templates can be due when a client submits a payment', ackErr)
+const { data: tpl, error: tplErr } = await A.c.from('document_templates').insert({ org_id: orgId, doc_type: 'receipt', name: 'Receipt', send_on: 'every_payment', file_path: tplPath, file_name: 'receipt.docx' }).select().single()
+ok(!tplErr, 'admin saves a template', tplErr)
+const { error: bTpl } = await B.c.from('document_templates').insert({ org_id: orgId, doc_type: 'receipt', name: 'Hack', file_path: tplPath, file_name: 'x.docx' }).select().single()
+ok(!!bTpl, 'team lead cannot add templates')
+const { error: bTplUp } = await B.c.storage.from('templates').upload(`${orgId}/${crypto.randomUUID()}.docx`, fakeDocx(), { contentType: DOCX })
+ok(!!bTplUp, 'team lead cannot upload template files')
+const { data: bTplFile } = await B.c.storage.from('templates').download(tplPath)
+ok(!!bTplFile, 'team lead can download templates to fill them in')
+const docPath = `${orgId}/${s2.id}/${crypto.randomUUID()}.docx`
+const { error: docUp } = await B.c.storage.from('documents').upload(docPath, fakeDocx(), { contentType: DOCX })
+ok(!docUp, 'team lead files a generated document', docUp)
+const { error: docErr } = await B.c.from('documents').insert({ org_id: orgId, subscription_id: s2.id, template_id: tpl.id, doc_type: 'receipt', name: 'Receipt · HCH-PG-002', file_path: docPath }).select().single()
+ok(!docErr, 'team lead records the document on the client file', docErr)
+const { error: fakeSent } = await B.c.from('documents').insert({ org_id: orgId, subscription_id: s2.id, doc_type: 'receipt', name: 'x', file_path: docPath, status: 'sent', sent_at: new Date().toISOString() }).select().single()
+ok(!!fakeSent, 'nobody can mark a document as emailed by hand')
+const [{ data: cTpls }, { data: cDocs }, { data: cTplFile }, { data: cDocFile }] = await Promise.all([
+  C.c.from('document_templates').select('*'), C.c.from('documents').select('*'),
+  C.c.storage.from('templates').download(tplPath), C.c.storage.from('documents').download(docPath)])
+ok(cTpls.length === 0 && cDocs.length === 0 && !cTplFile && !cDocFile, "another company can't see templates or documents")
+const { data: logDocs } = await A.c.from('activity_log').select('summary').like('summary', 'Generated Receipt ·%')
+ok(logDocs?.length === 1, 'generating a document is in the activity log')
 
 // ── Last super admin is protected ──
 const { error: lastSA } = await A.c.rpc('update_member_role', { p_org: orgId, p_user: (await A.c.auth.getUser()).data.user.id, p_role: 'admin' })

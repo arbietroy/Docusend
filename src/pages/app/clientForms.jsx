@@ -7,9 +7,10 @@ import { Button } from '../../components/ui/Button'
 import { Input, Select, Textarea } from '../../components/ui/Input'
 
 export const ID_TYPES = ['NIN', 'International passport', "Driver's licence", "Voter's card", 'Other']
+export const TITLES = ['Mr.', 'Mrs.', 'Miss', 'Ms.', 'Dr.', 'Chief', 'Engr.', 'Prof.', 'Pastor', 'Alhaji', 'Alhaja', 'Barr.']
 
 export const emptyClient = {
-  full_name: '', email: '', phone: '', address: '', occupation: '', date_of_birth: '',
+  title: '', full_name: '', email: '', phone: '', address: '', occupation: '', date_of_birth: '',
   id_type: '', id_number: '', next_of_kin_name: '', next_of_kin_phone: '', next_of_kin_relationship: '', notes: '',
 }
 
@@ -27,7 +28,13 @@ export function ClientFields({ value, onChange }) {
   const set = k => e => onChange({ ...value, [k]: e.target.value })
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <Input label="Full name" required className="sm:col-span-2" value={value.full_name} onChange={set('full_name')} placeholder="e.g. Adaeze Nwankwo" />
+      <div className="sm:col-span-2 grid grid-cols-[110px_1fr] gap-3">
+        <Select label="Title" value={value.title || ''} onChange={set('title')}>
+          <option value="">—</option>
+          {TITLES.map(t => <option key={t}>{t}</option>)}
+        </Select>
+        <Input label="Full name" required value={value.full_name} onChange={set('full_name')} placeholder="e.g. Adaeze Nwankwo" />
+      </div>
       <Input label="Email" type="email" value={value.email} onChange={set('email')} placeholder="client@email.com" hint="Documents and reminders go here" />
       <Input label="Phone" type="tel" value={value.phone} onChange={set('phone')} placeholder="0803 000 0000" />
       <Input label="Address" className="sm:col-span-2" value={value.address} onChange={set('address')} />

@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { useNavigate, useParams, useOutletContext } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams, useOutletContext, useSearchParams } from 'react-router-dom'
 import { useOrg } from '../../hooks/useOrg.jsx'
 import { useAsync } from '../../hooks/useAsync'
 import {
   getClient, getPurchasesForClient, listPaymentsForPurchases, listProperties,
-  updateClient, deleteClient, createPurchase,
+  updateClient, deleteClient, createPurchase, listTemplates, listDocuments,
 } from '../../lib/api'
+import { DocumentsList, CreateDocumentsModal } from './ClientDocuments'
 import { naira, fmtDate, initials } from '../../lib/format'
 import { reminderEmail, statementEmail, blankEmail } from '../../lib/emails'
 import { Card, ErrorBox, Field, Loading, Progress, StatusBadge } from '../../components/ui/Data'
@@ -22,17 +23,31 @@ export default function ClientDetail() {
   const { org, can } = useOrg()
   const navigate = useNavigate()
   const { refreshPending } = useOutletContext() || {}
+  const [params, setParams] = useSearchParams()
   const [modal, setModal] = useState(null)
 
   const { data, error, loading, reload } = useAsync(async () => {
-    const [client, purchases, properties] = await Promise.all([getClient(id), getPurchasesForClient(id), listProperties(org.id)])
-    const payments = await listPaymentsForPurchases(purchases.map(p => p.id))
-    return { client, purchases, properties, payments }
+    const [client, purchases, properties, templates] = await Promise.all([
+      getClient(id), getPurchasesForClient(id), listProperties(org.id), listTemplates(org.id)])
+    const ids = purchases.map(p => p.id)
+    const [payments, documents] = await Promise.all([listPaymentsForPurchases(ids), listDocuments(ids)])
+    return { client, purchases, properties, payments, templates, documents }
   }, [id, org.id])
+
+  // Arriving from "Prepare documents" after confirming a payment
+  const prepare = params.get('prepare')
+  useEffect(() => {
+    if (!prepare || !data) return
+    const pay = data.payments.find(p => p.id === prepare)
+    // Just confirmed: wait for the refreshed data before suggesting documents
+    if (pay && params.get('confirmed') && pay.status !== 'confirmed') return
+    if (pay) setModal({ type: 'docs', purchase: data.purchases.find(x => x.id === pay.subscription_id), paymentId: pay.id })
+    setParams({}, { replace: true })
+  }, [prepare, data, params, setParams])
 
   if (loading && !data) return <Loading />
   if (error) return <ErrorBox error={error} onRetry={reload} />
-  const { client, purchases, properties, payments } = data
+  const { client, purchases, properties, payments, templates, documents } = data
   const close = () => setModal(null)
   const saved = () => { close(); reload(); refreshPending?.() }
 
@@ -49,7 +64,7 @@ export default function ClientDetail() {
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center font-bold shrink-0">{initials(client.full_name)}</div>
           <div className="min-w-0">
-            <h2 className="text-lg font-bold truncate">{client.full_name}</h2>
+            <h2 className="text-lg font-bold truncate">{[client.title, client.full_name].filter(Boolean).join(' ')}</h2>
             <p className="text-sm text-slate-400 truncate">
               {purchases.map(p => p.client_number).filter(Boolean).join(' · ') || 'No client number yet'}
             </p>
@@ -126,6 +141,9 @@ export default function ClientDetail() {
                 ))}
               </div>
             )}
+
+            <DocumentsList documents={documents.filter(d => d.subscription_id === p.id)} canCreate
+              onCreate={() => setModal({ type: 'docs', purchase: p })} />
           </Card>
         )
       })}
@@ -149,6 +167,11 @@ export default function ClientDetail() {
       {modal?.type === 'editPurchase' && <EditPurchaseModal purchase={modal.purchase} onClose={close} onSaved={saved} />}
       <PaymentModal payment={modal?.type === 'payment' ? modal.payment : null} onClose={close} onDone={saved} />
       {modal?.type === 'edit' && <EditClientModal client={client} onClose={close} onSaved={saved} />}
+      {modal?.type === 'docs' && modal.purchase && (
+        <CreateDocumentsModal client={client} purchase={modal.purchase} property={properties.find(x => x.id === modal.purchase.property_id)}
+          payments={payments.filter(x => x.subscription_id === modal.purchase.id)} templates={templates}
+          initialPaymentId={modal.paymentId} onClose={close} onSaved={reload} />
+      )}
       {modal?.type === 'addPurchase' && <AddPurchaseModal client={client} properties={properties} onClose={close} onSaved={saved} />}
     </div>
   )
