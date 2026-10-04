@@ -1,13 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAuth, needsOnboarding } from '../hooks/useAuth.jsx'
+import { useAuth } from '../hooks/useAuth.jsx'
 import { Button } from '../components/ui/Button'
-import { Input, Select } from '../components/ui/Input'
+import { Input } from '../components/ui/Input'
 import { Alert } from '../components/ui/Badge'
-
-function getLegacyTrial() {
-  try { return JSON.parse(localStorage.getItem('docusend_trial')) } catch { return null }
-}
 
 // ─── Password strength ───
 function PasswordStrength({ password }) {
@@ -31,32 +27,6 @@ function PasswordStrength({ password }) {
   )
 }
 
-// ─── Plan card ───
-function PlanCard({ id, name, price, period, desc, badge, selected, onClick }) {
-  return (
-    <div
-      onClick={onClick}
-      className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-200
-        ${selected
-          ? 'border-blue-500/60 bg-blue-600/8'
-          : 'border-white/10 hover:border-white/20'
-        }`}
-    >
-      {badge && (
-        <span className="absolute -top-2.5 left-3 bg-green-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full">
-          {badge}
-        </span>
-      )}
-      <div className="flex justify-between items-center mb-1">
-        <span className="text-sm font-bold">{name}</span>
-        <span className="text-xs font-bold text-blue-400">{price}{period ? ` · ${period}` : ''}</span>
-      </div>
-      <p className="text-xs text-slate-400">{desc}</p>
-    </div>
-  )
-}
-
-// ─── Left branding panel ───
 function BrandPanel() {
   return (
     <div className="hidden lg:flex flex-col justify-between p-12 bg-[#111F3A] border-r border-white/8 relative overflow-hidden">
@@ -95,18 +65,21 @@ export default function AuthPage() {
   const [params]   = useSearchParams()
   const navigate   = useNavigate()
   const {
-    user, loading: authLoading, businessName, recovering,
-    signUp, signIn, signInWithGoogle, resetPassword, updatePassword, updateProfile, resendVerification,
+    user, loading: authLoading, recovering,
+    signUp, signIn, signInWithGoogle, resetPassword, updatePassword, resendVerification,
   } = useAuth()
 
-  // screens: signup | verify | onboard | login | forgot | newPassword
+  // Team invites link here with the invited email filled in
+  const inviteEmail = params.get('invite') || ''
+
+  // screens: signup | verify | login | forgot | newPassword
   const [screen, setScreen] = useState('signup')
   const [alert,  setAlert]  = useState({ msg: '', type: 'error' })
   const [loading, setLoading] = useState(false)
 
   // form state
   const [business, setBusiness] = useState('')
-  const [email,    setEmail]    = useState('')
+  const [email,    setEmail]    = useState(inviteEmail)
   const [password, setPassword] = useState('')
   const [loginEmail, setLoginEmail]       = useState('')
   const [loginPassword, setLoginPassword] = useState('')
@@ -115,39 +88,17 @@ export default function AuthPage() {
   const [newPassword, setNewPassword]         = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
-  // onboarding state
-  const [obStep, setObStep]   = useState(1)
-  const [plan, setPlan]       = useState('growth')
-  const [industry, setIndustry] = useState('')
-  const [clients,  setClients]  = useState('')
-
   // countdown
   const [countdown, setCountdown] = useState(0)
-
-  const migrating = useRef(false)
 
   // Decide which screen to show once we know who (if anyone) is signed in
   useEffect(() => {
     if (authLoading) return
     if (params.get('reset') === 'true' || recovering) { setScreen('newPassword'); return }
-    if (user) {
-      if (!needsOnboarding(user)) { navigate('/dashboard', { replace: true }); return }
-      // Accounts that finished onboarding back when it was only tracked in this browser
-      const legacy = getLegacyTrial()
-      if (legacy) {
-        if (!migrating.current) {
-          migrating.current = true
-          updateProfile({ onboarded: true, plan: legacy.plan || 'growth' })
-            .then(({ error }) => { if (!error) localStorage.removeItem('docusend_trial') })
-        }
-        return
-      }
-      setBusiness(b => b || businessName)
-      setScreen('onboard')
-      return
-    }
+    // Signed in: the app takes them to company setup or their dashboard
+    if (user) { navigate('/app', { replace: true }); return }
     if (params.get('mode') === 'login') setScreen('login')
-  }, [user, authLoading, recovering, params, navigate, businessName, updateProfile])
+  }, [user, authLoading, recovering, params, navigate])
 
   useEffect(() => {
     if (countdown <= 0) return
@@ -160,7 +111,7 @@ export default function AuthPage() {
 
   // ── Sign Up ──
   const handleSignUp = async () => {
-    if (!business.trim()) return showAlert('Please enter your business name.')
+    if (!inviteEmail && !business.trim()) return showAlert('Please enter your business name.')
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAlert('Please enter a valid email.')
     if (password.length < 8) return showAlert('Password must be at least 8 characters.')
     setLoading(true); clearAlert()
@@ -191,13 +142,6 @@ export default function AuthPage() {
     setLoginEmail(email)
     setScreen('login')
     showAlert('Once you\'ve clicked the link in your email, sign in here to continue setting up.', 'info')
-  }
-
-  // ── Onboarding ──
-  const handleObNext = (next) => {
-    if (obStep === 2 && !business.trim()) return showAlert('Please enter your business name.')
-    clearAlert()
-    setObStep(next)
   }
 
   // ── Login ──
@@ -232,7 +176,7 @@ export default function AuthPage() {
     const { error } = await updatePassword(newPassword)
     setLoading(false)
     if (error) { showAlert(error.message); return }
-    navigate('/dashboard', { replace: true })
+    navigate('/app', { replace: true })
   }
 
   const requestNewResetLink = () => {
@@ -240,27 +184,6 @@ export default function AuthPage() {
     navigate('/auth', { replace: true })
     setScreen('forgot')
   }
-
-  // ── Finish onboarding ──
-  const finishOnboarding = async () => {
-    setLoading(true); clearAlert()
-    const { error } = await updateProfile({
-      onboarded: true,
-      plan,
-      industry,
-      clients_per_month: clients,
-      business_name: business.trim(),
-    })
-    setLoading(false)
-    if (error) { showAlert(error.message); return }
-    navigate('/dashboard', { replace: true })
-  }
-
-  const PLANS = [
-    { id:'starter',    name:'Starter',    price:'₦50,000',  period:'setup + ₦15k/mo', desc:'Up to 3 products · 50 clients/month' },
-    { id:'growth',     name:'Growth',     price:'₦100,000', period:'setup + ₦30k/mo', desc:'Unlimited products & clients · All features', badge:'MOST POPULAR' },
-    { id:'enterprise', name:'Enterprise', price:'Custom',   period:'', desc:'Fully managed · Dedicated support' },
-  ]
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
@@ -276,7 +199,7 @@ export default function AuthPage() {
           {/* ── SIGN UP ── */}
           {screen === 'signup' && (
             <div>
-              <h2 className="text-2xl font-black mb-1">Create your account</h2>
+              <h2 className="text-2xl font-black mb-1">{inviteEmail ? 'Join your team' : 'Create your account'}</h2>
               <p className="text-sm text-slate-400 mb-7">
                 Already have an account?{' '}
                 <button onClick={() => { setScreen('login'); clearAlert() }} className="text-blue-400 font-medium hover:underline">Sign in</button>
@@ -298,7 +221,7 @@ export default function AuthPage() {
               </div>
 
               <div className="flex flex-col gap-3 mb-5">
-                <Input label="Business Name" placeholder="e.g. Apex Properties Ltd" value={business} onChange={e => setBusiness(e.target.value)} />
+                 {!inviteEmail && <Input label="Business Name" placeholder="e.g. Apex Properties Ltd" value={business} onChange={e => setBusiness(e.target.value)} />}
                 <Input label="Work Email" type="email" placeholder="you@business.com" value={email} onChange={e => setEmail(e.target.value)} />
                 <div>
                   <Input label="Password" type="password" placeholder="At least 8 characters" value={password} onChange={e => setPassword(e.target.value)} />
@@ -351,125 +274,6 @@ export default function AuthPage() {
                 Wrong email?{' '}
                 <button onClick={() => setScreen('signup')} className="text-blue-400 hover:underline">Go back</button>
               </p>
-            </div>
-          )}
-
-          {/* ── ONBOARDING ── */}
-          {screen === 'onboard' && (
-            <div>
-              {/* Progress bars */}
-              <div className="flex gap-1.5 mb-8">
-                {[1,2,3,4].map(i => (
-                  <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-400 ${i <= obStep ? 'bg-blue-500' : 'bg-white/10'}`} />
-                ))}
-              </div>
-
-              {/* Step 1 — Welcome */}
-              {obStep === 1 && (
-                <div>
-                  <div className="text-4xl mb-4">🎉</div>
-                  <p className="text-xs text-slate-500 mb-1">Step 1 of 4</p>
-                  <h2 className="text-2xl font-black mb-2">Welcome to DocuSend, {business || 'there'}!</h2>
-                  <p className="text-sm text-slate-400 leading-relaxed mb-7">
-                    You're about to eliminate manual document sending forever. Let's get you set up — it takes less than 10 minutes.
-                  </p>
-                  <div className="flex flex-col gap-2 mb-7">
-                    {['Account created & email verified', 'Add your first product', 'Upload your document templates', 'Connect your Gmail'].map((item, i) => (
-                      <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-sm transition-colors
-                        ${i === 0 ? 'border-green-500/20 bg-green-500/5 text-white' : 'border-white/8 text-slate-400'}`}>
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${i === 0 ? 'bg-green-500' : 'bg-white/10'}`}>
-                          {i === 0 ? '✓' : i+1}
-                        </span>
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                  <Button className="w-full" onClick={() => handleObNext(2)}>Let's get started →</Button>
-                </div>
-              )}
-
-              {/* Step 2 — Business details */}
-              {obStep === 2 && (
-                <div>
-                  <div className="text-4xl mb-4">🏢</div>
-                  <p className="text-xs text-slate-500 mb-1">Step 2 of 4</p>
-                  <h2 className="text-2xl font-black mb-2">Tell us about your business</h2>
-                  <p className="text-sm text-slate-400 leading-relaxed mb-7">This helps us personalise your DocuSend experience.</p>
-                  {alert.msg && <><Alert variant={alert.type}>{alert.msg}</Alert><div className="mb-4" /></>}
-                  <div className="flex flex-col gap-3 mb-7">
-                    <Input label="Business Name" placeholder="e.g. Apex Properties Ltd" value={business} onChange={e => setBusiness(e.target.value)} />
-                    <Select label="Industry" value={industry} onChange={e => setIndustry(e.target.value)}>
-                      <option value="">Select your industry</option>
-                      <option>Real Estate / Property</option>
-                      <option>Financial Services</option>
-                      <option>Cooperatives / Savings</option>
-                      <option>Retail / E-commerce</option>
-                      <option>Education</option>
-                      <option>Healthcare</option>
-                      <option>Legal Services</option>
-                      <option>Other</option>
-                    </Select>
-                    <Select label="Clients per month" value={clients} onChange={e => setClients(e.target.value)}>
-                      <option value="">Select a range</option>
-                      <option>1 – 10</option>
-                      <option>11 – 50</option>
-                      <option>51 – 200</option>
-                      <option>200+</option>
-                    </Select>
-                  </div>
-                  <div className="flex gap-2.5">
-                    <button onClick={() => handleObNext(3)} className="flex-none px-4 py-2.5 rounded-lg border border-white/10 text-sm text-slate-400 hover:text-white transition-colors">Skip</button>
-                    <Button className="flex-1" onClick={() => handleObNext(3)}>Continue →</Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 3 — Plan */}
-              {obStep === 3 && (
-                <div>
-                  <div className="text-4xl mb-4">🎁</div>
-                  <p className="text-xs text-slate-500 mb-1">Step 3 of 4</p>
-                  <h2 className="text-2xl font-black mb-2">Your 14-day free trial starts now</h2>
-                  <p className="text-sm text-slate-400 leading-relaxed mb-5">Full access — no card required. Choose a plan to upgrade to when your trial ends.</p>
-                  <div className="flex items-center gap-3 p-3.5 rounded-xl bg-green-500/8 border border-green-500/20 mb-5">
-                    <span className="text-xl shrink-0">✅</span>
-                    <div>
-                      <p className="text-sm font-semibold text-green-400">Full access unlocked for 14 days</p>
-                      <p className="text-xs text-slate-400 mt-0.5">We'll remind you 3 days before your trial ends.</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2.5 mb-5">
-                    {PLANS.map(p => (
-                      <PlanCard key={p.id} {...p} selected={plan === p.id} onClick={() => setPlan(p.id)} />
-                    ))}
-                  </div>
-                  <p className="text-xs text-slate-500 text-center mb-4">No commitment during trial. Change plan anytime.</p>
-                  <div className="flex gap-2.5">
-                    <button onClick={() => handleObNext(4)} className="flex-none px-4 py-2.5 rounded-lg border border-white/10 text-sm text-slate-400 hover:text-white transition-colors">Decide later</button>
-                    <Button className="flex-1" onClick={() => handleObNext(4)}>Continue with trial →</Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 4 — All done */}
-              {obStep === 4 && (
-                <div>
-                  <div className="text-4xl mb-4">🚀</div>
-                  <p className="text-xs text-slate-500 mb-1">Step 4 of 4</p>
-                  <h2 className="text-2xl font-black mb-2">You're all set!</h2>
-                  <p className="text-sm text-slate-400 leading-relaxed mb-6">
-                    Your DocuSend account is ready. Head to your dashboard to add your first product and start sending automated documents.
-                  </p>
-                  <div className="p-4 rounded-xl bg-blue-600/8 border border-blue-600/20 mb-6">
-                    <p className="text-sm font-semibold mb-3">What to do first:</p>
-                    {['Add your first product and set its price', 'Upload your contract and receipt templates', 'Connect your Gmail account', 'Add your first client and test the system'].map((s, i) => (
-                      <p key={i} className="text-sm text-slate-400 flex gap-2 mb-1.5"><span>{i+1}.</span>{s}</p>
-                    ))}
-                  </div>
-                  {alert.msg && <><Alert variant={alert.type}>{alert.msg}</Alert><div className="mb-4" /></>}
-                  <Button className="w-full" loading={loading} onClick={finishOnboarding}>Go to my dashboard →</Button>
-                </div>
-              )}
             </div>
           )}
 

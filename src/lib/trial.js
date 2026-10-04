@@ -1,26 +1,15 @@
-export const TRIAL_DAYS = 14
 const DAY_MS = 24 * 60 * 60 * 1000
 
-// The trial is anchored to the Supabase account's creation date, so it follows
-// the user across devices and can't be reset by clearing browser storage.
-export function getTrialEnd(user) {
-  if (!user?.created_at) return null
-  return new Date(new Date(user.created_at).getTime() + TRIAL_DAYS * DAY_MS)
+// Trials belong to the company and are set by the database (7 days)
+export function trialDaysLeft(org) {
+  if (!org?.trial_ends_at) return 0
+  return Math.max(0, Math.ceil((new Date(org.trial_ends_at) - new Date()) / DAY_MS))
 }
 
-export function getTrialDaysLeft(user) {
-  const end = getTrialEnd(user)
-  if (!end) return TRIAL_DAYS
-  return Math.max(0, Math.ceil((end - new Date()) / DAY_MS))
-}
+export const isTrialExpired = org => !!org?.trial_ends_at && new Date() > new Date(org.trial_ends_at)
 
-export function isTrialActive(user) { return getTrialDaysLeft(user) > 0 }
-
-export function isTrialExpired(user) {
-  const end = getTrialEnd(user)
-  return !!end && new Date() > end
-}
-
-export function getPlan(user) {
-  return user?.user_metadata?.plan || 'growth'
-}
+export const PLANS = [
+  { id: 'starter',    name: 'Starter',    price: '₦50,000',  period: 'setup + ₦15,000/mo' },
+  { id: 'growth',     name: 'Growth',     price: '₦100,000', period: 'setup + ₦30,000/mo' },
+  { id: 'enterprise', name: 'Enterprise', price: 'Custom',   period: 'Talk to us' },
+]

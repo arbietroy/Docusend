@@ -7,10 +7,6 @@ const AuthContext = createContext(null)
 // previews, production). Each origin must be in Supabase → Auth → URL Configuration.
 const origin = () => window.location.origin
 
-export function needsOnboarding(user) {
-  return !!user && !user.user_metadata?.onboarded
-}
-
 export function AuthProvider({ children }) {
   const [user, setUser]             = useState(null)
   const [loading, setLoading]       = useState(true)
@@ -50,7 +46,7 @@ export function AuthProvider({ children }) {
   const signInWithGoogle = async () => {
     return await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${origin()}/auth` },
+      options: { redirectTo: `${origin()}/app` },
     })
   }
 
