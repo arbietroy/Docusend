@@ -15,8 +15,8 @@ proof of payment through the company's own online forms.
 
 Later database changes are added as new files in `supabase/migrations/`. Run only the new ones.
 Already applied: `20261004000001`–`20261004000003`. Run next, in order: `20261005000001_documents.sql`,
-`20261005000002_document_details.sql`, `20261016000001_realtors_import_dashboards.sql` (all safe to re-run;
-`supabase/pending.sql` has the three combined).
+`20261005000002_document_details.sql`, `20261016000001_realtors_import_dashboards.sql`,
+`20261016000002_realtor_portal_leaderboard.sql` (all safe to re-run; `supabase/pending.sql` has them combined).
 
 ## Routes
 
@@ -26,6 +26,7 @@ Already applied: `20261004000001`–`20261004000003`. Run next, in order: `20261
 | `/auth` | Public | Sign up, log in, password reset. `?invite=email` is the team invite link |
 | `/f/:company` | Clients | Subscription form (new purchase with proof of payment) |
 | `/f/:company/pay` | Clients | Instalment form (client number + email/phone) |
+| `/r/:token` | Realtors | Private, read-only page of one realtor's clients and commission |
 | `/onboarding` | Signed in | Create a company or accept an invitation |
 | `/app/...` | Team | The company workspace |
 

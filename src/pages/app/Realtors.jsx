@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useOrg } from '../../hooks/useOrg.jsx'
 import { useAsync } from '../../hooks/useAsync'
-import { listRealtors, getRealtor, saveRealtor, listPurchasesForRealtor, listPayouts, addPayout, deletePayout } from '../../lib/api'
+import { listRealtors, getRealtor, saveRealtor, listPurchasesForRealtor, listPayouts, addPayout, deletePayout, setRealtorPortal, realtorLeaderboard } from '../../lib/api'
 import { naira, nairaShort, fmtDate, isoDate, initials, toCsv, downloadFile } from '../../lib/format'
-import { Card, EmptyState, ErrorBox, Field, Loading, PageHeader, StatCard, StatusBadge, Table, Td } from '../../components/ui/Data'
+import { Card, EmptyState, ErrorBox, Field, Loading, PageHeader, StatCard, StatusBadge, Table, Td, Tabs } from '../../components/ui/Data'
 import { Alert, Badge, Modal } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Input, Textarea } from '../../components/ui/Input'
@@ -49,6 +49,8 @@ export default function Realtors() {
         <StatCard label="Commission earned" value={nairaShort(sum('commission_earned'))} sub={`on ${nairaShort(sum('collected'))} collected`} />
         <StatCard label="Commission owed" value={nairaShort(totalOwed)} sub={`${nairaShort(sum('commission_paid'))} paid so far`} tone={totalOwed > 0 ? 'warn' : 'neutral'} />
       </div>
+
+      <Leaderboard />
 
       <Input placeholder="Search name, email, phone or agency…" value={search} onChange={e => setSearch(e.target.value)} />
 
@@ -138,6 +140,8 @@ export function RealtorDetail() {
           </Table>
         )}
       </div>
+
+      <PortalLink realtor={r} onChanged={reload} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Card title="Commission payouts">
@@ -246,5 +250,100 @@ function PayoutModal({ realtor, owedAmount, onClose, onSaved }) {
         <Button className="flex-1" loading={busy} onClick={save}>Save payout</Button>
       </div>
     </Modal>
+  )
+}
+
+const PERIODS = [
+  { id: 'month', label: 'This month' }, { id: 'quarter', label: 'This quarter' },
+  { id: 'year', label: 'This year' }, { id: 'all', label: 'All time' },
+]
+export function periodRange(id) {
+  const t = new Date(), y = t.getFullYear(), m = t.getMonth()
+  const from = id === 'month' ? new Date(y, m, 1) : id === 'quarter' ? new Date(y, m - (m % 3), 1) : id === 'year' ? new Date(y, 0, 1) : new Date(2000, 0, 1)
+  return [isoDate(from), isoDate(t)]
+}
+
+// Who brought in the most money: confirmed payments from each realtor's clients
+function Leaderboard() {
+  const { org } = useOrg()
+  const navigate = useNavigate()
+  const [period, setPeriod] = useState('year')
+  const [from, to] = periodRange(period)
+  const { data, error, loading } = useAsync(() => realtorLeaderboard(org.id, from, to), [org.id, from, to])
+  const top = (data || []).slice(0, 10)
+  const max = Math.max(...top.map(r => Number(r.collected)), 1)
+
+  return (
+    <Card title="🏆 Who brings in the most money">
+      <Tabs tabs={PERIODS} value={period} onChange={setPeriod} />
+      {error ? <p className="text-sm text-red-300">{error.message}</p> : loading && !data ? <Loading /> : top.length === 0 ? (
+        <p className="text-sm text-slate-400 py-2">No money from realtors' clients in this period.</p>
+      ) : (
+        <ol className="space-y-3">
+          {top.map((r, i) => (
+            <li key={r.id}>
+              <button onClick={() => navigate(`/app/realtors/${r.id}`)} className="w-full text-left group">
+                <div className="flex items-baseline justify-between gap-3 mb-1">
+                  <p className="text-sm min-w-0 truncate"><span className="text-slate-500 w-5 inline-block">{i + 1}.</span><span className="font-semibold group-hover:underline">{r.name}</span>
+                    {r.agency && <span className="text-xs text-slate-500"> · {r.agency}</span>}</p>
+                  <p className="text-sm font-bold shrink-0">{naira(r.collected)}</p>
+                </div>
+                <div className="h-2 bg-white/8 rounded-full overflow-hidden ml-5">
+                  <div className="h-full bg-blue-500 rounded-full" style={{ width: `${(Number(r.collected) / max) * 100}%` }} />
+                </div>
+                <p className="text-xs text-slate-500 mt-1 ml-5">
+                  {Number(r.sales)} new sale{Number(r.sales) !== 1 ? 's' : ''}{Number(r.sales) ? ` worth ${nairaShort(r.sales_value)}` : ''} · {nairaShort(r.commission)} commission earned
+                </p>
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+      <p className="text-xs text-slate-500 mt-3">Money brought in = confirmed payments from the realtor's clients in the period, including instalments on earlier sales.</p>
+    </Card>
+  )
+}
+
+function PortalLink({ realtor, onChanged }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [copied, setCopied] = useState(false)
+  const url = realtor.portal_token ? `${window.location.origin}/r/${realtor.portal_token}` : null
+
+  const change = async enabled => {
+    if (!enabled && !window.confirm(`Turn off ${realtor.full_name}'s link? It will stop working straight away.`)) return
+    if (enabled && url && !window.confirm('Create a new link? The current one will stop working.')) return
+    setBusy(true); setError('')
+    try { await setRealtorPortal(realtor.id, enabled); onChanged() } catch (e) { setError(e.message) }
+    setBusy(false)
+  }
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000) }
+    catch { window.prompt('Copy this link:', url) }
+  }
+  const message = url && `Hello ${realtor.full_name.split(' ')[0]}, here is your private link to follow your clients' payments: ${url}`
+
+  return (
+    <Card title="🔗 Realtor's private link">
+      <p className="text-sm text-slate-400 mb-3">
+        A page just for {realtor.full_name.split(' ')[0]}: their clients' payment status, what's due and who is behind, and their commission. No login needed. It shows only their own clients, with no client phone numbers or emails.
+      </p>
+      {error && <div className="mb-3"><Alert>{error}</Alert></div>}
+      {url ? (
+        <>
+          <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-xs font-mono text-slate-300 break-all mb-3">{url}</div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={copy}>{copied ? '✓ Copied' : 'Copy link'}</Button>
+            <a href={`https://wa.me/${(realtor.phone || '').replace(/\D/g, '').replace(/^0/, '234')}?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer"
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-green-600/20 text-green-300 border border-green-600/30">Send on WhatsApp</a>
+            <a href={url} target="_blank" rel="noreferrer" className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">Preview ↗</a>
+            <Button size="sm" variant="ghost" loading={busy} onClick={() => change(true)}>New link</Button>
+            <Button size="sm" variant="ghost" onClick={() => change(false)}>Turn off</Button>
+          </div>
+        </>
+      ) : (
+        <Button size="sm" loading={busy} onClick={() => change(true)}>Create private link</Button>
+      )}
+    </Card>
   )
 }

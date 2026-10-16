@@ -8,6 +8,7 @@ import LandingPage    from './pages/LandingPage'
 import AuthPage       from './pages/AuthPage'
 import OnboardingPage from './pages/OnboardingPage'
 import { SubscribeForm, PayForm } from './pages/public/PublicForms'
+import RealtorPortal from './pages/public/RealtorPortal'
 import Overview     from './pages/app/Overview'
 import Payments     from './pages/app/Payments'
 import Clients      from './pages/app/Clients'
@@ -43,6 +44,7 @@ export default function App() {
         {/* Public client forms: no login */}
         <Route path="/f/:slug"     element={<SubscribeForm />} />
         <Route path="/f/:slug/pay" element={<PayForm />} />
+        <Route path="/r/:token"    element={<RealtorPortal />} />
 
         <Route path="/onboarding" element={<RequireUser><OnboardingPage /></RequireUser>} />
         <Route path="/app" element={<RequireUser><AppLayout /></RequireUser>}>

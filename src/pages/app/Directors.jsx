@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useOrg } from '../../hooks/useOrg.jsx'
 import { useAsync } from '../../hooks/useAsync'
-import { executiveSummary, listPurchases } from '../../lib/api'
+import { executiveSummary, listPurchases, realtorLeaderboard } from '../../lib/api'
 import { naira, nairaShort, fmtDate, isoDate, unitLabel } from '../../lib/format'
 import { Card, ErrorBox, Loading, Progress, StatCard, Tabs } from '../../components/ui/Data'
 import { Button } from '../../components/ui/Button'
@@ -34,8 +34,8 @@ export default function Directors() {
 
   const { data, error, loading, reload } = useAsync(async () => {
     if (!can('viewReports')) return null
-    const [s, purchases] = await Promise.all([executiveSummary(org.id, from, to), listPurchases(org.id)])
-    return { s, purchases }
+    const [s, purchases, realtors] = await Promise.all([executiveSummary(org.id, from, to), listPurchases(org.id), realtorLeaderboard(org.id, from, to)])
+    return { s, purchases, realtors }
   }, [org.id, from, to])
 
   if (!can('viewReports')) return <Navigate to="/app" replace />
@@ -61,7 +61,7 @@ export default function Directors() {
   )
 }
 
-function Dashboard({ s, purchases }) {
+function Dashboard({ s, purchases, realtors }) {
   const soldPct = Number(s.units_total) ? Math.round((Number(s.units_sold_total) / Number(s.units_total)) * 100) : 0
   const collectedPct = Number(s.contract_value) ? Math.round((Number(s.collected_total) / Number(s.contract_value)) * 100) : 0
   const active = purchases.filter(p => ['owing', 'defaulting', 'on_track'].includes(p.payment_status))
@@ -113,14 +113,14 @@ function Dashboard({ s, purchases }) {
         </div>
       </Card>
 
-      <Card title="Top realtors this period" action={<Link to="/app/realtors" className="text-xs text-blue-400 hover:underline">All realtors →</Link>}>
-        {s.top_realtors.length === 0 ? <p className="text-sm text-slate-400">No realtor sales in this period.</p> : (
+      <Card title="🏆 Realtors who brought in the most money" action={<Link to="/app/realtors" className="text-xs text-blue-400 hover:underline">All realtors →</Link>}>
+        {realtors.length === 0 ? <p className="text-sm text-slate-400">No money from realtors' clients in this period.</p> : (
           <div className="divide-y divide-white/5 -my-2">
-            {s.top_realtors.map((r, i) => (
-              <div key={r.name} className="flex items-center justify-between gap-3 py-2.5">
-                <p className="text-sm"><span className="text-slate-500 mr-2">{i + 1}.</span>{r.name}</p>
-                <p className="text-sm"><strong>{naira(r.sales_value)}</strong> <span className="text-xs text-slate-400">· {r.sales} sale{r.sales !== 1 ? 's' : ''}</span></p>
-              </div>
+            {realtors.slice(0, 5).map((r, i) => (
+              <Link key={r.id} to={`/app/realtors/${r.id}`} className="flex items-center justify-between gap-3 py-2.5 hover:opacity-80">
+                <p className="text-sm min-w-0 truncate"><span className="text-slate-500 mr-2">{i + 1}.</span>{r.name}</p>
+                <p className="text-sm shrink-0"><strong>{naira(r.collected)}</strong> <span className="text-xs text-slate-400">· {Number(r.sales)} new sale{Number(r.sales) !== 1 ? 's' : ''}</span></p>
+              </Link>
             ))}
           </div>
         )}

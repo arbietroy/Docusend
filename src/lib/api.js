@@ -224,3 +224,10 @@ export const deletePayout = id => must(supabase.from('realtor_payouts').delete()
 export const importClients = (orgId, rows) => must(supabase.rpc('import_clients', { p_org: orgId, p_rows: rows }))
 export const executiveSummary = (orgId, from, to) =>
   must(supabase.rpc('executive_summary', { p_org: orgId, p_from: from, p_to: to }))
+
+// ── Realtor links & ranking ──
+export const setRealtorPortal = (realtorId, enabled) =>
+  must(supabase.rpc('set_realtor_portal', { p_realtor: realtorId, p_enabled: enabled }))
+export const getRealtorPortal = token => must(supabase.rpc('get_realtor_portal', { p_token: token }))
+export const realtorLeaderboard = (orgId, from, to) =>
+  must(supabase.rpc('realtor_leaderboard', { p_org: orgId, p_from: from, p_to: to }))

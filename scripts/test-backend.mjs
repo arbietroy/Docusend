@@ -200,6 +200,27 @@ ok(Number(tolaAfter.commission_paid) === 10000, 'payout counted against commissi
 const { data: cRealtors } = await C.c.from('realtors').select('*')
 ok(cRealtors.length === 0, "another company can't see this company's realtors")
 
+// ── Realtor links ──
+const { error: bLink } = await B.c.rpc('set_realtor_portal', { p_realtor: tola.id, p_enabled: true })
+ok(!!bLink, 'team lead cannot create realtor links')
+const { data: token, error: linkErr } = await A.c.rpc('set_realtor_portal', { p_realtor: tola.id, p_enabled: true })
+ok(!linkErr && token?.length >= 60, 'director creates a private realtor link', linkErr)
+const { data: withLink } = await A.c.from('realtor_overview').select('portal_token').eq('id', tola.id).single()
+ok(withLink?.portal_token === token, "the realtor's page can show the link", withLink)
+const { data: portal } = await anon.rpc('get_realtor_portal', { p_token: token })
+ok(portal?.realtor?.name === 'Tola Realtor' && portal.clients.length === 1 && portal.clients[0].client_number === 'HCH-PG-001', "the link shows only that realtor's confirmed clients", portal?.clients)
+ok(portal?.clients?.[0]?.next_due_date && portal.clients[0].status && !('client_email' in portal.clients[0]) && !('email' in portal.clients[0]), 'realtor sees due dates and status but not client contact details', portal?.clients?.[0])
+ok(Number(portal?.commission?.earned) === 30000, 'realtor sees their own commission', portal?.commission)
+const { data: wrong } = await anon.rpc('get_realtor_portal', { p_token: token.slice(0, -4) + 'abcd' })
+ok(wrong === null, 'a wrong link shows nothing')
+await A.c.rpc('set_realtor_portal', { p_realtor: tola.id, p_enabled: false })
+const { data: off } = await anon.rpc('get_realtor_portal', { p_token: token })
+ok(off === null, 'a turned-off link stops working')
+const { data: board, error: boardErr } = await A.c.rpc('realtor_leaderboard', { p_org: orgId, p_from: '2020-01-01', p_to: today })
+ok(!boardErr && board?.[0]?.name === 'Tola Realtor' && Number(board[0].collected) === 600000, 'director sees realtors ranked by money brought in', boardErr || board)
+const { error: bBoard } = await B.c.rpc('realtor_leaderboard', { p_org: orgId, p_from: today, p_to: today })
+ok(!!bBoard, 'team lead cannot see the realtor ranking')
+
 // ── Import existing clients ──
 const { data: imp, error: impErr } = await A.c.rpc('import_clients', { p_org: orgId, p_rows: [
   { title: 'Mrs.', full_name: 'Imported Fully Paid', email: 'paid@import.test', property: 'PG', plan: 'Outright', units: 2, total_price: 2000000, amount_paid: 2000000, purchase_date: '2025-01-15', plot_numbers: 'Block A, Plots 1-2', realtor_name: 'Tola Realtor', realtor_email: 'tola@example.com' },
