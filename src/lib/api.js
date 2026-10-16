@@ -225,9 +225,13 @@ export const importClients = (orgId, rows) => must(supabase.rpc('import_clients'
 export const executiveSummary = (orgId, from, to) =>
   must(supabase.rpc('executive_summary', { p_org: orgId, p_from: from, p_to: to }))
 
-// ── Realtor links & ranking ──
-export const setRealtorPortal = (realtorId, enabled) =>
-  must(supabase.rpc('set_realtor_portal', { p_realtor: realtorId, p_enabled: enabled }))
-export const getRealtorPortal = token => must(supabase.rpc('get_realtor_portal', { p_token: token }))
+// ── Realtor dashboard & ranking ──
+export const myRealtorDashboard = () => must(supabase.rpc('get_my_realtor_dashboard'))
+export const getRealtorLoginCompany = slug => must(supabase.rpc('get_realtor_login_company', { p_slug: slug }))
+export const claimRealtor = (slug, fullName, phone) =>
+  must(supabase.rpc('claim_realtor', { p_slug: slug, p_full_name: fullName || '', p_phone: phone || '' }))
+export const getRealtorAccount = realtorId =>
+  must(supabase.from('realtor_accounts').select('*').eq('realtor_id', realtorId).maybeSingle())
+export const disconnectRealtorAccount = realtorId => must(supabase.from('realtor_accounts').delete().eq('realtor_id', realtorId))
 export const realtorLeaderboard = (orgId, from, to) =>
   must(supabase.rpc('realtor_leaderboard', { p_org: orgId, p_from: from, p_to: to }))

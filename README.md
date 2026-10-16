@@ -26,7 +26,7 @@ Already applied: `20261004000001`–`20261004000003`. Run next, in order: `20261
 | `/auth` | Public | Sign up, log in, password reset. `?invite=email` is the team invite link |
 | `/f/:company` | Clients | Subscription form (new purchase with proof of payment) |
 | `/f/:company/pay` | Clients | Instalment form (client number + email/phone) |
-| `/r/:token` | Realtors | Private, read-only page of one realtor's clients and commission |
+| `/realtor/:company` | Realtors | Realtor sign-up/login. Shows their own clients' status, due dates and commission |
 | `/onboarding` | Signed in | Create a company or accept an invitation |
 | `/app/...` | Team | The company workspace |
 
@@ -53,6 +53,11 @@ The database enforces these rules with row level security, so they hold even out
 - **Realtors:** created and linked automatically from the realtor details on each purchase (matched by
   email, then phone, then name). Commission = the realtor's rate (or a per-sale override) on every confirmed
   payment from their clients; payouts are recorded against it. Admins only.
+- **Realtor logins:** the company shares one link (`/realtor/<company>`). Realtors sign up with their email and
+  the name clients know them by; they're connected to the realtor record with the same email, or else the same
+  name (ignoring case and titles like Mr/Mrs; a phone number breaks ties). One login per realtor; admins see
+  who is connected and can disconnect a login, which can't then reconnect itself. Realtors never see client
+  phone numbers or emails.
 - **Import:** admins upload an Excel/CSV client list; columns are matched by heading and can be adjusted.
   Each row becomes a client + purchase; amounts already paid become one confirmed "balance brought forward"
   payment. Existing client numbers are kept and new numbering continues after them.

@@ -28,13 +28,14 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const signUp = async (email, password, businessName) => {
+  // returnTo: where the confirmation email link brings them back to
+  const signUp = async (email, password, businessName, returnTo = '/auth?verified=true', meta = {}) => {
     return await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { business_name: businessName },
-        emailRedirectTo: `${origin()}/auth?verified=true`,
+        data: { ...meta, ...(businessName ? { business_name: businessName } : {}) },
+        emailRedirectTo: `${origin()}${returnTo}`,
       },
     })
   }

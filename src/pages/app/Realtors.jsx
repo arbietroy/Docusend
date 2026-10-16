@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useOrg } from '../../hooks/useOrg.jsx'
 import { useAsync } from '../../hooks/useAsync'
-import { listRealtors, getRealtor, saveRealtor, listPurchasesForRealtor, listPayouts, addPayout, deletePayout, setRealtorPortal, realtorLeaderboard } from '../../lib/api'
+import { listRealtors, getRealtor, saveRealtor, listPurchasesForRealtor, listPayouts, addPayout, deletePayout, realtorLeaderboard, getRealtorAccount, disconnectRealtorAccount } from '../../lib/api'
 import { naira, nairaShort, fmtDate, isoDate, initials, toCsv, downloadFile } from '../../lib/format'
 import { Card, EmptyState, ErrorBox, Field, Loading, PageHeader, StatCard, StatusBadge, Table, Td, Tabs } from '../../components/ui/Data'
 import { Alert, Badge, Modal } from '../../components/ui/Badge'
@@ -52,6 +52,8 @@ export default function Realtors() {
 
       <Leaderboard />
 
+      <RealtorLoginLink org={org} />
+
       <Input placeholder="Search name, email, phone or agency…" value={search} onChange={e => setSearch(e.target.value)} />
 
       {rows.length === 0 ? (
@@ -86,14 +88,14 @@ export function RealtorDetail() {
   const [modal, setModal] = useState(null)
   const { data, error, loading, reload } = useAsync(async () => {
     if (!can('viewReports')) return null
-    const [realtor, purchases, payouts] = await Promise.all([getRealtor(id), listPurchasesForRealtor(id), listPayouts(id)])
-    return { realtor, purchases, payouts }
+    const [realtor, purchases, payouts, account] = await Promise.all([getRealtor(id), listPurchasesForRealtor(id), listPayouts(id), getRealtorAccount(id)])
+    return { realtor, purchases, payouts, account }
   }, [id])
 
   if (!can('viewReports')) return <Navigate to="/app" replace />
   if (loading && !data) return <Loading />
   if (error) return <ErrorBox error={error} onRetry={reload} />
-  const { realtor: r, purchases, payouts } = data
+  const { realtor: r, purchases, payouts, account } = data
   const rate = p => Number(p.commission_percent ?? r.commission_percent)
 
   return (
@@ -141,7 +143,7 @@ export function RealtorDetail() {
         )}
       </div>
 
-      <PortalLink realtor={r} onChanged={reload} />
+      <ConnectedLogin realtor={r} account={account} onChanged={reload} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Card title="Commission payouts">
@@ -304,45 +306,60 @@ function Leaderboard() {
   )
 }
 
-function PortalLink({ realtor, onChanged }) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const [copied, setCopied] = useState(false)
-  const url = realtor.portal_token ? `${window.location.origin}/r/${realtor.portal_token}` : null
+export function realtorLoginUrl(org) {
+  return `${window.location.origin}/realtor/${org.slug}`
+}
 
-  const change = async enabled => {
-    if (!enabled && !window.confirm(`Turn off ${realtor.full_name}'s link? It will stop working straight away.`)) return
-    if (enabled && url && !window.confirm('Create a new link? The current one will stop working.')) return
-    setBusy(true); setError('')
-    try { await setRealtorPortal(realtor.id, enabled); onChanged() } catch (e) { setError(e.message) }
-    setBusy(false)
-  }
+function RealtorLoginLink({ org }) {
+  const [copied, setCopied] = useState(false)
+  const url = realtorLoginUrl(org)
+  const message = `Hello! Follow your ${org.name} clients' payments (who is owing, what's due soon and your commission) here: ${url} . Sign up with your email and your name as your clients know you.`
   const copy = async () => {
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000) }
     catch { window.prompt('Copy this link:', url) }
   }
-  const message = url && `Hello ${realtor.full_name.split(' ')[0]}, here is your private link to follow your clients' payments: ${url}`
-
   return (
-    <Card title="🔗 Realtor's private link">
+    <Card title="🔗 Realtor login link">
       <p className="text-sm text-slate-400 mb-3">
-        A page just for {realtor.full_name.split(' ')[0]}: their clients' payment status, what's due and who is behind, and their commission. No login needed. It shows only their own clients, with no client phone numbers or emails.
+        One link for all your realtors. They sign up with their email and the name clients know them by, and we connect them to
+        the clients who named them. Each realtor sees only their own clients (no client phone numbers or emails) and their commission.
       </p>
+      <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-xs font-mono text-slate-300 break-all mb-3">{url}</div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={copy}>{copied ? '✓ Copied' : 'Copy link'}</Button>
+        <a href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer"
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-green-600/20 text-green-300 border border-green-600/30">Share on WhatsApp</a>
+      </div>
+    </Card>
+  )
+}
+
+function ConnectedLogin({ realtor, account, onChanged }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const first = realtor.full_name.split(' ')[0]
+  const disconnect = async () => {
+    if (!window.confirm(`Disconnect ${account.email}? They will stop seeing ${first}'s clients straight away and can't reconnect this login.`)) return
+    setBusy(true); setError('')
+    try { await disconnectRealtorAccount(realtor.id); onChanged() } catch (e) { setError(e.message) }
+    setBusy(false)
+  }
+  return (
+    <Card title="🔐 Realtor login">
       {error && <div className="mb-3"><Alert>{error}</Alert></div>}
-      {url ? (
-        <>
-          <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-xs font-mono text-slate-300 break-all mb-3">{url}</div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={copy}>{copied ? '✓ Copied' : 'Copy link'}</Button>
-            <a href={`https://wa.me/${(realtor.phone || '').replace(/\D/g, '').replace(/^0/, '234')}?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer"
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-green-600/20 text-green-300 border border-green-600/30">Send on WhatsApp</a>
-            <a href={url} target="_blank" rel="noreferrer" className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">Preview ↗</a>
-            <Button size="sm" variant="ghost" loading={busy} onClick={() => change(true)}>New link</Button>
-            <Button size="sm" variant="ghost" onClick={() => change(false)}>Turn off</Button>
-          </div>
-        </>
+      {account ? (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-sm text-slate-300">
+            Connected to <strong>{account.email}</strong> on {fmtDate(account.created_at)}
+            <span className="text-slate-500"> ({account.linked_by === 'email' ? 'matched by email' : 'matched by name'})</span>.
+            {account.linked_by === 'name' && <span className="block text-xs text-slate-500 mt-1">If this isn't {first}, disconnect it.</span>}
+          </p>
+          <Button size="sm" variant="ghost" loading={busy} onClick={disconnect}>Disconnect</Button>
+        </div>
       ) : (
-        <Button size="sm" loading={busy} onClick={() => change(true)}>Create private link</Button>
+        <p className="text-sm text-slate-400">
+          {first} hasn't signed in yet. Send them your realtor login link from the <Link to="/app/realtors" className="text-blue-400">Realtors page</Link>.
+        </p>
       )}
     </Card>
   )
