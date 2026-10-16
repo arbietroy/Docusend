@@ -8,10 +8,12 @@
     "docx-preview": "^0.4.1",
     "docxtemplater": "^3.71.0",
     "lucide-react": "^0.383.0",
+    "papaparse": "^5.7.0",
     "pizzip": "^3.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.0"
+    "react-router-dom": "^6.20.0",
+    "read-excel-file": "^9.3.12"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",

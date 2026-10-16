@@ -22,6 +22,9 @@ import Team         from './pages/app/Team'
 import Settings     from './pages/app/Settings'
 import Billing      from './pages/app/Billing'
 import Templates    from './pages/app/Templates'
+import Realtors, { RealtorDetail } from './pages/app/Realtors'
+import Import       from './pages/app/Import'
+import Operations   from './pages/app/Operations'
 
 function RequireUser({ children }) {
   const { user, loading } = useAuth()
@@ -53,7 +56,12 @@ export default function App() {
           <Route path="properties"      element={<Properties />} />
           <Route path="properties/new"  element={<NewProperty />} />
           <Route path="properties/:id"  element={<PropertyDetail />} />
-          <Route path="directors"       element={<Directors />} />
+          <Route path="executive"       element={<Directors />} />
+          <Route path="directors"       element={<Navigate to="/app/executive" replace />} />
+          <Route path="operations"      element={<Operations />} />
+          <Route path="realtors"        element={<Realtors />} />
+          <Route path="realtors/:id"    element={<RealtorDetail />} />
+          <Route path="import"          element={<Import />} />
           <Route path="activity"        element={<Activity />} />
           <Route path="team"            element={<Team />} />
           <Route path="settings"        element={<Settings />} />

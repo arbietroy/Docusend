@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useOrg } from '../../hooks/useOrg.jsx'
-import { recordPayment, confirmPayment, uploadProof, updatePurchase } from '../../lib/api'
+import { recordPayment, confirmPayment, uploadProof, updatePurchase, listRealtorNames } from '../../lib/api'
 import { naira, isoDate } from '../../lib/format'
 import { Alert, Modal } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -54,6 +54,34 @@ export function ClientFields({ value, onChange }) {
 }
 
 // Property + plan + units, with the price worked out live
+// Suggests realtors already in the directory; picking one fills their details
+export function RealtorInput({ value, onChange }) {
+  const { org } = useOrg()
+  const [realtors, setRealtors] = useState([])
+  useEffect(() => { listRealtorNames(org.id).then(setRealtors).catch(() => {}) }, [org.id])
+  const fill = (name, list) => {
+    const match = list.find(r => r.full_name.toLowerCase() === name.trim().toLowerCase())
+    return match
+      ? { ...value, realtor_name: match.full_name, realtor_email: value.realtor_email || match.email || '', realtor_phone: value.realtor_phone || match.phone || '' }
+      : { ...value, realtor_name: name }
+  }
+  // If a name was typed before the list arrived, fill the details once it does
+  useEffect(() => {
+    if (value.realtor_name && !value.realtor_email && realtors.length) {
+      const next = fill(value.realtor_name, realtors)
+      if (next.realtor_email) onChange(next)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [realtors])
+  const onName = e => onChange(fill(e.target.value, realtors))
+  return (
+    <>
+      <Input label="Realtor name" list="realtor-names" value={value.realtor_name} onChange={onName} hint={realtors.length ? 'Start typing to pick from your realtors' : undefined} />
+      <datalist id="realtor-names">{realtors.map(r => <option key={r.id} value={r.full_name} />)}</datalist>
+    </>
+  )
+}
+
 export function PurchaseFields({ properties, value, onChange }) {
   const set = k => e => onChange({ ...value, [k]: e.target.value })
   const property = properties.find(p => p.id === value.property_id)
@@ -73,7 +101,7 @@ export function PurchaseFields({ properties, value, onChange }) {
       </Select>
       <Input label={`Number of ${property?.unit_type || 'unit'}s`} type="number" min="0.01" step="any" required value={value.units} onChange={set('units')} />
       <Input label="Purchase date" type="date" required value={value.start_date} onChange={set('start_date')} hint="Instalments are due monthly from this date" />
-      <Input label="Realtor name" value={value.realtor_name} onChange={set('realtor_name')} />
+      <RealtorInput value={value} onChange={onChange} />
       <Input label="Realtor email" type="email" value={value.realtor_email} onChange={set('realtor_email')} hint="Copied on emails to this client" />
       <Input label="Realtor phone" type="tel" value={value.realtor_phone} onChange={set('realtor_phone')} />
       {plan && (
@@ -205,6 +233,8 @@ export function EditPurchaseModal({ purchase, onClose, onSaved }) {
         discount_reason: discount > 0 ? value.discount_reason.trim() : null, start_date: value.start_date,
         realtor_name: value.realtor_name.trim() || null, realtor_email: value.realtor_email.trim().toLowerCase() || null,
         realtor_phone: value.realtor_phone.trim() || null, status: value.status,
+        ...(value.realtor_name.trim() !== (purchase.realtor_name || '') || value.realtor_email.trim().toLowerCase() !== (purchase.realtor_email || '')
+          ? { realtor_id: null } : {}),
       })
       onSaved()
     } catch (e) { setError(e.message) }
@@ -224,7 +254,7 @@ export function EditPurchaseModal({ purchase, onClose, onSaved }) {
           <option value="completed">Completed</option>
           <option value="cancelled">Cancelled</option>
         </Select>
-        <Input label="Realtor name" value={value.realtor_name} onChange={set('realtor_name')} />
+        <RealtorInput value={value} onChange={setValue} />
         <Input label="Realtor email" type="email" value={value.realtor_email} onChange={set('realtor_email')} />
         <Input label="Realtor phone" type="tel" value={value.realtor_phone} onChange={set('realtor_phone')} />
       </div>

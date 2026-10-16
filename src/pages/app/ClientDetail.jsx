@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams, useOutletContext, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useOutletContext, useSearchParams } from 'react-router-dom'
 import { useOrg } from '../../hooks/useOrg.jsx'
 import { useAsync } from '../../hooks/useAsync'
 import {
@@ -120,7 +120,11 @@ export default function ClientDetail() {
               <Field label="Purchase date">{fmtDate(p.start_date)}</Field>
               <Field label="Next due">{p.next_due_date ? fmtDate(p.next_due_date) : '—'}{p.days_overdue > 0 && p.balance > 0 ? ` (${p.days_overdue}d late)` : ''}</Field>
               <Field label="Plot / unit numbers">{p.plot_numbers}</Field>
-              <Field label="Realtor">{p.realtor_name ? `${p.realtor_name}${p.realtor_email ? ' · ' + p.realtor_email : ''}` : null}</Field>
+              <Field label="Realtor">{p.realtor_name
+                ? (can('viewReports') && p.realtor_id
+                    ? <Link to={`/app/realtors/${p.realtor_id}`} className="text-blue-400 hover:underline">{p.realtor_name}</Link>
+                    : p.realtor_name)
+                : null}</Field>
               {Number(p.discount_amount) > 0 && <div className="col-span-2"><Field label="Discount">{naira(p.discount_amount)}{p.discount_reason ? ` · ${p.discount_reason}` : ''}</Field></div>}
             </div>
 

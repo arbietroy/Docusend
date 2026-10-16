@@ -191,3 +191,36 @@ export async function saveDocument({ orgId, subscriptionId, paymentId, template,
 export async function downloadDocument(path) {
   return must(supabase.storage.from('documents').download(path))
 }
+
+// ── Realtors ──
+export const listRealtors = orgId =>
+  must(supabase.from('realtor_overview').select('*').eq('org_id', orgId).order('sales_value', { ascending: false }))
+export const getRealtor = id => must(supabase.from('realtor_overview').select('*').eq('id', id).single())
+export const listRealtorNames = orgId =>
+  must(supabase.from('realtors').select('id, full_name, email, phone').eq('org_id', orgId).eq('is_active', true).order('full_name'))
+export async function saveRealtor(orgId, r) {
+  const fields = {
+    full_name: r.full_name.trim(), email: r.email?.trim().toLowerCase() || null, phone: r.phone?.trim() || null,
+    agency: r.agency?.trim() || null, bank_name: r.bank_name?.trim() || null, account_name: r.account_name?.trim() || null,
+    account_number: r.account_number?.trim() || null, commission_percent: Number(r.commission_percent || 0),
+    is_active: r.is_active !== false, notes: r.notes?.trim() || null,
+  }
+  try {
+    return r.id
+      ? await must(supabase.from('realtors').update(fields).eq('id', r.id).select().single())
+      : await must(supabase.from('realtors').insert({ ...fields, org_id: orgId }).select().single())
+  } catch (e) {
+    throw new Error(e.message.includes('realtors_org_email_idx') ? 'Another realtor already uses that email.' : e.message)
+  }
+}
+export const listPurchasesForRealtor = realtorId =>
+  must(supabase.from('subscription_overview').select('*').eq('realtor_id', realtorId).order('start_date', { ascending: false }))
+export const listPayouts = realtorId =>
+  must(supabase.from('realtor_payouts').select('*').eq('realtor_id', realtorId).order('paid_on', { ascending: false }))
+export const addPayout = row => must(supabase.from('realtor_payouts').insert(row).select().single())
+export const deletePayout = id => must(supabase.from('realtor_payouts').delete().eq('id', id))
+
+// ── Import & dashboards ──
+export const importClients = (orgId, rows) => must(supabase.rpc('import_clients', { p_org: orgId, p_rows: rows }))
+export const executiveSummary = (orgId, from, to) =>
+  must(supabase.rpc('executive_summary', { p_org: orgId, p_from: from, p_to: to }))
