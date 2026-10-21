@@ -8,6 +8,7 @@ import LandingPage    from './pages/LandingPage'
 import AuthPage       from './pages/AuthPage'
 import OnboardingPage from './pages/OnboardingPage'
 import { SubscribeForm, PayForm } from './pages/public/PublicForms'
+import RealtorApp from './pages/public/RealtorApp'
 import Overview     from './pages/app/Overview'
 import Payments     from './pages/app/Payments'
 import Clients      from './pages/app/Clients'
@@ -21,6 +22,10 @@ import Activity     from './pages/app/Activity'
 import Team         from './pages/app/Team'
 import Settings     from './pages/app/Settings'
 import Billing      from './pages/app/Billing'
+import Templates    from './pages/app/Templates'
+import Realtors, { RealtorDetail } from './pages/app/Realtors'
+import Import       from './pages/app/Import'
+import Operations   from './pages/app/Operations'
 
 function RequireUser({ children }) {
   const { user, loading } = useAuth()
@@ -39,6 +44,8 @@ export default function App() {
         {/* Public client forms: no login */}
         <Route path="/f/:slug"     element={<SubscribeForm />} />
         <Route path="/f/:slug/pay" element={<PayForm />} />
+        <Route path="/realtor"     element={<RealtorApp />} />
+        <Route path="/realtor/:slug" element={<RealtorApp />} />
 
         <Route path="/onboarding" element={<RequireUser><OnboardingPage /></RequireUser>} />
         <Route path="/app" element={<RequireUser><AppLayout /></RequireUser>}>
@@ -52,11 +59,17 @@ export default function App() {
           <Route path="properties"      element={<Properties />} />
           <Route path="properties/new"  element={<NewProperty />} />
           <Route path="properties/:id"  element={<PropertyDetail />} />
-          <Route path="directors"       element={<Directors />} />
+          <Route path="executive"       element={<Directors />} />
+          <Route path="directors"       element={<Navigate to="/app/executive" replace />} />
+          <Route path="operations"      element={<Operations />} />
+          <Route path="realtors"        element={<Realtors />} />
+          <Route path="realtors/:id"    element={<RealtorDetail />} />
+          <Route path="import"          element={<Import />} />
           <Route path="activity"        element={<Activity />} />
           <Route path="team"            element={<Team />} />
           <Route path="settings"        element={<Settings />} />
           <Route path="billing"         element={<Billing />} />
+          <Route path="templates"       element={<Templates />} />
         </Route>
 
         <Route path="/dashboard" element={<Navigate to="/app" replace />} />

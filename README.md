@@ -14,6 +14,9 @@ proof of payment through the company's own online forms.
 3. **Account deletion (optional):** `supabase functions deploy delete-account`.
 
 Later database changes are added as new files in `supabase/migrations/`. Run only the new ones.
+Already applied: `20261004000001`–`20261004000003`. Run next, in order: `20261005000001_documents.sql`,
+`20261005000002_document_details.sql`, `20261016000001_realtors_import_dashboards.sql`,
+`20261016000002_realtor_portal_leaderboard.sql` (all safe to re-run; `supabase/pending.sql` has them combined).
 
 ## Routes
 
@@ -23,6 +26,7 @@ Later database changes are added as new files in `supabase/migrations/`. Run onl
 | `/auth` | Public | Sign up, log in, password reset. `?invite=email` is the team invite link |
 | `/f/:company` | Clients | Subscription form (new purchase with proof of payment) |
 | `/f/:company/pay` | Clients | Instalment form (client number + email/phone) |
+| `/realtor/:company` | Realtors | Realtor sign-up/login. Shows their own clients' status, due dates and commission |
 | `/onboarding` | Signed in | Create a company or accept an invitation |
 | `/app/...` | Team | The company workspace |
 
@@ -46,6 +50,25 @@ The database enforces these rules with row level security, so they hold even out
   payments. A client is *owing* when behind schedule, and *defaulting* once they're more than the
   company's grace period (default 30 days) late.
 - **Prices are locked** on each purchase, so changing a property's prices only affects new sales.
+- **Realtors:** created and linked automatically from the realtor details on each purchase (matched by
+  email, then phone, then name). Commission = the realtor's rate (or a per-sale override) on every confirmed
+  payment from their clients; payouts are recorded against it. Admins only.
+- **Realtor logins:** the company shares one link (`/realtor/<company>`). Realtors sign up with their email and
+  the name clients know them by; they're connected to the realtor record with the same email, or else the same
+  name (ignoring case and titles like Mr/Mrs; a phone number breaks ties). One login per realtor; admins see
+  who is connected and can disconnect a login, which can't then reconnect itself. Realtors never see client
+  phone numbers or emails.
+- **Import:** admins upload an Excel/CSV client list; columns are matched by heading and can be adjusted.
+  Each row becomes a client + purchase; amounts already paid become one confirmed "balance brought forward"
+  payment. Existing client numbers are kept and new numbering continues after them.
+- **Dashboards:** Executive (admins: collections, sales, inventory sold, receivables, 12-month trends,
+  per-property and top realtors) and Operations (team leads+: stock per property, payments to confirm,
+  instalments due this week, clients behind, fully paid awaiting allocation).
+- **Documents:** admins upload Word (.docx) templates with `{{placeholders}}` (see the in-app guide),
+  for the whole company or one property. The team generates documents for a purchase; they're
+  filled in the browser (docxtemplater), saved to the client's file, and can be previewed,
+  downloaded or printed to PDF. Sample templates live in `public/sample-templates`
+  (rebuild with `node scripts/make-sample-templates.mjs`).
 
 ## Development
 

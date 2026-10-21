@@ -8,8 +8,8 @@ import { Loading } from '../ui/Data'
 
 const TITLES = {
   '/app': 'Overview', '/app/payments': 'Payments', '/app/clients': 'Clients', '/app/clients/new': 'Add client',
-  '/app/collections': 'Owing & defaulting', '/app/forms': 'Client forms', '/app/directors': 'Weekly summary',
-  '/app/properties': 'Properties', '/app/properties/new': 'New property', '/app/activity': 'Activity log',
+  '/app/collections': 'Owing & defaulting', '/app/forms': 'Client forms', '/app/executive': 'Executive dashboard', '/app/operations': 'Operations', '/app/realtors': 'Realtors', '/app/import': 'Import clients',
+  '/app/properties': 'Properties', '/app/properties/new': 'New property', '/app/activity': 'Activity log', '/app/templates': 'Document templates',
   '/app/team': 'Team', '/app/settings': 'Settings', '/app/billing': 'Billing',
 }
 
@@ -34,7 +34,7 @@ export default function AppLayout() {
   if (error) return <div className="min-h-screen bg-navy p-6 text-red-300 text-sm">Couldn't load your workspace: {error}</div>
   if (!org) return <Navigate to="/onboarding" replace />
 
-  const title = TITLES[pathname] || (pathname.startsWith('/app/clients/') ? 'Client' : pathname.startsWith('/app/properties/') ? 'Property' : '')
+  const title = TITLES[pathname] || (pathname.startsWith('/app/clients/') ? 'Client' : pathname.startsWith('/app/properties/') ? 'Property' : pathname.startsWith('/app/realtors/') ? 'Realtor' : '')
 
   return (
     <div className="flex min-h-screen bg-navy">

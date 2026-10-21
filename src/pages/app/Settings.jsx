@@ -44,7 +44,7 @@ function useSaver() {
 function CompanySettings() {
   const { org, refresh } = useOrg()
   const [v, setV] = useState(() => ({
-    name: org.name, client_prefix: org.client_prefix, brand_color: org.brand_color,
+    name: org.name, rc_number: org.rc_number || '', client_prefix: org.client_prefix, brand_color: org.brand_color,
     contact_email: org.contact_email || '', phone: org.phone || '', address: org.address || '',
     bank_name: org.bank_name || '', account_name: org.account_name || '', account_number: org.account_number || '',
     sender_name: org.sender_name || '', sender_email: org.sender_email || '', grace_days: String(org.grace_days),
@@ -88,6 +88,7 @@ function CompanySettings() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input label="Company name" value={v.name} onChange={set('name')} />
+          <Input label="RC number" value={v.rc_number} onChange={set('rc_number')} placeholder="e.g. 1234567" hint="Shown on documents that use {{company_rc_number}}" />
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium">Brand colour</label>
             <div className="flex gap-2">

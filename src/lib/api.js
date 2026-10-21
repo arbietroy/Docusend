@@ -44,10 +44,18 @@ export async function proofUrl(path) {
   return data.signedUrl
 }
 
+// Phones don't always say what kind of file was picked; work it out from the name
+const TYPES_BY_EXT = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', heif: 'image/heic', pdf: 'application/pdf', svg: 'image/svg+xml' }
+function typed(file) {
+  const ext = (file.name?.split('.').pop() || '').toLowerCase()
+  const type = file.type || TYPES_BY_EXT[ext] || 'application/octet-stream'
+  return { ext: ext.replace(/[^a-z0-9]/g, '') || 'bin', type, body: file.type ? file : new Blob([file], { type }) }
+}
+
 export async function uploadProof(orgId, file) {
-  const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const { ext, type, body } = typed(file)
   const path = `${orgId}/${crypto.randomUUID()}.${ext}`
-  await must(supabase.storage.from('payment-proofs').upload(path, file, { contentType: file.type }))
+  await must(supabase.storage.from('payment-proofs').upload(path, body, { contentType: type }))
   return path
 }
 
@@ -100,9 +108,9 @@ export const setMemberRole = (orgId, userId, role) => must(supabase.rpc('update_
 export const removeMember = (orgId, userId) => must(supabase.rpc('remove_member', { p_org: orgId, p_user: userId }))
 
 export async function uploadLogo(orgId, file) {
-  const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const { ext, type, body } = typed(file)
   const path = `${orgId}/logo-${Date.now()}.${ext}`
-  await must(supabase.storage.from('org-assets').upload(path, file, { contentType: file.type, upsert: true }))
+  await must(supabase.storage.from('org-assets').upload(path, body, { contentType: type, upsert: true }))
   return supabase.storage.from('org-assets').getPublicUrl(path).data.publicUrl
 }
 
@@ -119,3 +127,111 @@ export const directorsSummary = (orgId, from, to) =>
 export const getPublicForm = slug => must(supabase.rpc('get_public_form', { p_slug: slug }))
 export const submitSubscriptionForm = (slug, payload) => must(supabase.rpc('submit_subscription_form', { p_slug: slug, p: payload }))
 export const submitPaymentForm = (slug, payload) => must(supabase.rpc('submit_payment_form', { p_slug: slug, p: payload }))
+
+// ── Document templates ──
+const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+// Browsers don't always label .docx files, so set the type explicitly
+const asDocx = file => new Blob([file], { type: DOCX })
+
+export const listTemplates = orgId =>
+  must(supabase.from('document_templates').select('*').eq('org_id', orgId).order('created_at'))
+
+export async function uploadTemplate(orgId, { property_id, doc_type, name, send_on }, file) {
+  const path = `${orgId}/${crypto.randomUUID()}.docx`
+  await must(supabase.storage.from('templates').upload(path, asDocx(file), { contentType: DOCX }))
+  try {
+    return await must(supabase.from('document_templates').insert({
+      org_id: orgId, property_id: property_id || null, doc_type, name: name.trim(), send_on,
+      file_path: path, file_name: file.name || `${doc_type}.docx`,
+    }).select().single())
+  } catch (e) {
+    await supabase.storage.from('templates').remove([path])
+    throw e
+  }
+}
+
+export async function replaceTemplateFile(template, file) {
+  const path = `${template.org_id}/${crypto.randomUUID()}.docx`
+  await must(supabase.storage.from('templates').upload(path, asDocx(file), { contentType: DOCX }))
+  const row = await must(supabase.from('document_templates')
+    .update({ file_path: path, file_name: file.name, updated_at: new Date().toISOString() })
+    .eq('id', template.id).select().single())
+  await supabase.storage.from('templates').remove([template.file_path])
+  return row
+}
+
+export const updateTemplate = (id, patch) =>
+  must(supabase.from('document_templates').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id).select().single())
+
+export async function deleteTemplate(template) {
+  await must(supabase.from('document_templates').delete().eq('id', template.id))
+  await supabase.storage.from('templates').remove([template.file_path])
+}
+
+export async function downloadTemplate(path) {
+  const blob = await must(supabase.storage.from('templates').download(path))
+  return blob.arrayBuffer()
+}
+
+// ── Generated documents ──
+export const listDocuments = subscriptionIds =>
+  subscriptionIds.length
+    ? must(supabase.from('documents').select('*').in('subscription_id', subscriptionIds).order('created_at', { ascending: false }))
+    : Promise.resolve([])
+
+export async function saveDocument({ orgId, subscriptionId, paymentId, template, name, blob }) {
+  const path = `${orgId}/${subscriptionId}/${crypto.randomUUID()}.docx`
+  await must(supabase.storage.from('documents').upload(path, asDocx(blob), { contentType: DOCX }))
+  return must(supabase.from('documents').insert({
+    org_id: orgId, subscription_id: subscriptionId, payment_id: paymentId || null,
+    template_id: template?.id || null, doc_type: template?.doc_type || 'other', name, file_path: path,
+  }).select().single())
+}
+
+export async function downloadDocument(path) {
+  return must(supabase.storage.from('documents').download(path))
+}
+
+// ── Realtors ──
+export const listRealtors = orgId =>
+  must(supabase.from('realtor_overview').select('*').eq('org_id', orgId).order('sales_value', { ascending: false }))
+export const getRealtor = id => must(supabase.from('realtor_overview').select('*').eq('id', id).single())
+export const listRealtorNames = orgId =>
+  must(supabase.from('realtors').select('id, full_name, email, phone').eq('org_id', orgId).eq('is_active', true).order('full_name'))
+export async function saveRealtor(orgId, r) {
+  const fields = {
+    full_name: r.full_name.trim(), email: r.email?.trim().toLowerCase() || null, phone: r.phone?.trim() || null,
+    agency: r.agency?.trim() || null, bank_name: r.bank_name?.trim() || null, account_name: r.account_name?.trim() || null,
+    account_number: r.account_number?.trim() || null, commission_percent: Number(r.commission_percent || 0),
+    is_active: r.is_active !== false, notes: r.notes?.trim() || null,
+  }
+  try {
+    return r.id
+      ? await must(supabase.from('realtors').update(fields).eq('id', r.id).select().single())
+      : await must(supabase.from('realtors').insert({ ...fields, org_id: orgId }).select().single())
+  } catch (e) {
+    throw new Error(e.message.includes('realtors_org_email_idx') ? 'Another realtor already uses that email.' : e.message)
+  }
+}
+export const listPurchasesForRealtor = realtorId =>
+  must(supabase.from('subscription_overview').select('*').eq('realtor_id', realtorId).order('start_date', { ascending: false }))
+export const listPayouts = realtorId =>
+  must(supabase.from('realtor_payouts').select('*').eq('realtor_id', realtorId).order('paid_on', { ascending: false }))
+export const addPayout = row => must(supabase.from('realtor_payouts').insert(row).select().single())
+export const deletePayout = id => must(supabase.from('realtor_payouts').delete().eq('id', id))
+
+// ── Import & dashboards ──
+export const importClients = (orgId, rows) => must(supabase.rpc('import_clients', { p_org: orgId, p_rows: rows }))
+export const executiveSummary = (orgId, from, to) =>
+  must(supabase.rpc('executive_summary', { p_org: orgId, p_from: from, p_to: to }))
+
+// ── Realtor dashboard & ranking ──
+export const myRealtorDashboard = () => must(supabase.rpc('get_my_realtor_dashboard'))
+export const getRealtorLoginCompany = slug => must(supabase.rpc('get_realtor_login_company', { p_slug: slug }))
+export const claimRealtor = (slug, fullName, phone) =>
+  must(supabase.rpc('claim_realtor', { p_slug: slug, p_full_name: fullName || '', p_phone: phone || '' }))
+export const getRealtorAccount = realtorId =>
+  must(supabase.from('realtor_accounts').select('*').eq('realtor_id', realtorId).maybeSingle())
+export const disconnectRealtorAccount = realtorId => must(supabase.from('realtor_accounts').delete().eq('realtor_id', realtorId))
+export const realtorLeaderboard = (orgId, from, to) =>
+  must(supabase.rpc('realtor_leaderboard', { p_org: orgId, p_from: from, p_to: to }))

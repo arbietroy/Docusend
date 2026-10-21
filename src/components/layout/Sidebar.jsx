@@ -12,9 +12,15 @@ const SECTIONS = [
     { to: '/app/collections', icon: '⏰', label: 'Owing & defaulting' },
     { to: '/app/forms',       icon: '🔗', label: 'Client forms' },
   ]},
+  { label: 'Managers', items: [
+    { to: '/app/operations', icon: '🛠️', label: 'Operations', perm: 'confirmPayments' },
+  ]},
   { label: 'Directors', items: [
-    { to: '/app/directors',  icon: '📈', label: 'Weekly summary', perm: 'viewReports' },
+    { to: '/app/executive',  icon: '📈', label: 'Executive dashboard', perm: 'viewReports' },
+    { to: '/app/realtors',   icon: '🤝', label: 'Realtors', perm: 'viewReports' },
     { to: '/app/properties', icon: '🏘️', label: 'Properties', perm: 'manageProperties' },
+    { to: '/app/templates',  icon: '📄', label: 'Document templates', perm: 'manageProperties' },
+    { to: '/app/import',     icon: '📥', label: 'Import clients', perm: 'exportData' },
     { to: '/app/activity',   icon: '🧾', label: 'Activity log', perm: 'viewActivity' },
   ]},
   { label: 'Account', items: [

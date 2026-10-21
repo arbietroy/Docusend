@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { GoogleButton } from '../components/ui/GoogleButton'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -165,7 +166,7 @@ export default function AuthPage() {
     const { error } = await resetPassword(forgotEmail)
     setLoading(false)
     if (error) { showAlert(error.message); return }
-    showAlert(`Reset link sent to ${forgotEmail}! Check your inbox.`, 'success')
+    showAlert(`If ${forgotEmail} has an account, a reset link is on its way. It can take a few minutes, so check your spam folder too.`, 'success')
   }
 
   // ── Set new password (from reset link) ──
@@ -176,7 +177,8 @@ export default function AuthPage() {
     const { error } = await updatePassword(newPassword)
     setLoading(false)
     if (error) { showAlert(error.message); return }
-    navigate('/app', { replace: true })
+    const next = params.get('next') || ''
+    navigate(next.startsWith('/') && !next.startsWith('//') ? next : '/app', { replace: true })
   }
 
   const requestNewResetLink = () => {
@@ -208,12 +210,7 @@ export default function AuthPage() {
               {alert.msg && <div className="mb-4" />}
 
               {/* Google */}
-              <button
-                onClick={() => signInWithGoogle()}
-                className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/9 text-sm font-medium transition-colors mb-5"
-              >
-                <span className="text-base">G</span> Continue with Google
-              </button>
+              <GoogleButton className="mb-5" onError={m => m ? showAlert(m) : clearAlert()} />
               <div className="flex items-center gap-3 mb-5">
                 <div className="flex-1 h-px bg-white/8" />
                 <span className="text-xs text-slate-500">or sign up with email</span>
@@ -286,12 +283,7 @@ export default function AuthPage() {
                 <button onClick={() => { setScreen('signup'); clearAlert() }} className="text-blue-400 font-medium hover:underline">Sign up free</button>
               </p>
               {alert.msg && <><Alert variant={alert.type}>{alert.msg}</Alert><div className="mb-4" /></>}
-              <button
-                onClick={() => signInWithGoogle()}
-                className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/9 text-sm font-medium transition-colors mb-5"
-              >
-                <span>G</span> Continue with Google
-              </button>
+              <GoogleButton className="mb-5" onError={m => m ? showAlert(m) : clearAlert()} />
               <div className="flex items-center gap-3 mb-5">
                 <div className="flex-1 h-px bg-white/8" /><span className="text-xs text-slate-500">or sign in with email</span><div className="flex-1 h-px bg-white/8" />
               </div>
