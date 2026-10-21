@@ -8,6 +8,7 @@ import { Loading, Progress, StatusBadge, Tabs } from '../../components/ui/Data'
 import { Alert } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { GoogleButton } from '../../components/ui/GoogleButton'
 
 // /realtor/:company: realtors sign in with email; they are matched to the
 // name (or email) clients wrote for them on the company's forms.
@@ -68,8 +69,8 @@ function RealtorLogin({ company }) {
       if (error) setMsg({ text: error.message.includes('registered') ? 'This email already has an account. Sign in instead.' : error.message, type: 'error' })
       else if (!data.session) setMsg({ text: `We've sent a confirmation link to ${email.trim()}. Open it to finish creating your account, then sign in here.`, type: 'success' })
     } else {
-      const { error } = await resetPassword(email.trim())
-      setMsg(error ? { text: error.message, type: 'error' } : { text: `Password reset link sent to ${email.trim()}.`, type: 'success' })
+      const { error } = await resetPassword(email.trim(), company ? `/realtor/${company.slug}` : '/realtor')
+      setMsg(error ? { text: error.message, type: 'error' } : { text: `If ${email.trim()} has an account, a reset link is on its way. It can take a few minutes, so check your spam folder too.`, type: 'success' })
     }
     setBusy(false)
   }
@@ -85,6 +86,12 @@ function RealtorLogin({ company }) {
           Follow your clients' payments: who is owing, what's due soon, and your commission.
           {mode === 'signup' && <> Use <strong className="text-white">the name your clients know you by</strong>, so we can find them.</>}
         </p>
+        {mode !== 'forgot' && <>
+          <GoogleButton returnTo={company ? `/realtor/${company.slug}` : '/realtor'} onError={m => setMsg({ text: m, type: 'error' })} />
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-white/8" /><span className="text-xs text-slate-500">or with email</span><div className="flex-1 h-px bg-white/8" />
+          </div>
+        </>}
         <div className="flex flex-col gap-3">
           {mode === 'signup' && <>
             <Input label="Your full name (as clients know you)" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Kunle Ade" />
@@ -185,7 +192,7 @@ function RealtorDashboard({ company }) {
 }
 
 function ConnectForm({ company, defaults, busy, error, onSubmit }) {
-  const [name, setName] = useState(defaults.realtor_name || '')
+  const [name, setName] = useState(defaults.realtor_name || defaults.full_name || defaults.name || '')
   const [phone, setPhone] = useState(defaults.realtor_phone || '')
   return (
     <div className="max-w-sm mx-auto pt-2">

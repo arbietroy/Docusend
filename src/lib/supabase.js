@@ -6,6 +6,14 @@ const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON || 'eyJhbGciOiJIUzI1NiI
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
 
+// Whether Google sign-in has been switched on in Supabase (Authentication → Providers)
+export async function googleEnabled() {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: SUPABASE_ANON } })
+    return !!(await r.json())?.external?.google
+  } catch { return true } // can't tell: let Supabase decide
+}
+
 // Throws on error so callers can use try/catch or useAsync
 export async function must(promise) {
   const { data, error } = await promise

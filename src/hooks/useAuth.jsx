@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, googleEnabled } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
@@ -44,10 +44,13 @@ export function AuthProvider({ children }) {
     return await supabase.auth.signInWithPassword({ email, password })
   }
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (returnTo = '/app') => {
+    if (!(await googleEnabled())) {
+      return { error: { message: "Google sign-in isn't switched on yet. Please use your email and a password for now." } }
+    }
     return await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${origin()}/app` },
+      options: { redirectTo: `${origin()}${returnTo}`, queryParams: { prompt: 'select_account' } },
     })
   }
 
@@ -55,9 +58,10 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
   }
 
-  const resetPassword = async (email) => {
+  // `next`: where to go after the new password is set (e.g. back to the realtor portal)
+  const resetPassword = async (email, next) => {
     return await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin()}/auth?reset=true`,
+      redirectTo: `${origin()}/auth?reset=true${next ? `&next=${encodeURIComponent(next)}` : ''}`,
     })
   }
 
